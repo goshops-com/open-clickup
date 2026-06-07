@@ -1,29 +1,48 @@
+<div align="center">
+
 # Open ClickUp
 
-**An open-source, self-hostable ClickUp clone** — project & task management with the full hierarchy, five views, custom fields, real-time-friendly UX, and dark mode. Built with Next.js 16, React 19, Prisma 7 and Postgres.
+**The open-source, self-hostable project management platform.**
 
-> ⚠️ Unofficial, educational project. Not affiliated with or endorsed by ClickUp. It re-creates the *management* UX (no AI features) as a learning/reference codebase.
+Hierarchy, five views, custom fields, real-time collaboration and dark mode — own your data, no per-seat pricing.
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-7b68ee.svg)](LICENSE)
+![Next.js](https://img.shields.io/badge/Next.js-16-000000.svg)
+![React](https://img.shields.io/badge/React-19-149eca.svg)
+![Postgres](https://img.shields.io/badge/Postgres-16-336791.svg)
+[![PRs welcome](https://img.shields.io/badge/PRs-welcome-2ecd6f.svg)](CONTRIBUTING.md)
+
+</div>
 
 ![List view](screenshots/list.png)
 
 ---
 
+## Why Open ClickUp
+
+- **Self-hostable** — run it on your own infrastructure with a single Postgres database. Your data stays yours.
+- **No per-seat pricing** — invite the whole team; it's MIT-licensed and free.
+- **Familiar, fast UX** — the workflows you already know (lists, boards, sprints) with instant, optimistic interactions and live updates.
+- **Hackable** — a clean, modern, fully-typed codebase you can extend or embed.
+
 ## ✨ Features
 
-**Hierarchy** — Workspaces → Spaces → Folders → Lists → Tasks → Subtasks, with inline create / rename / delete in the sidebar.
+**Hierarchy** — Workspaces → Spaces → Folders → Lists → Tasks → Subtasks, with inline create / rename / delete.
 
-**5 views** (per list, each with its own saved config):
+**5 views** (per list, each with its own saved configuration):
 - **List** — grouped, inline-editable, drag-to-reorder, custom-field columns
 - **Board** — Kanban with drag-and-drop between columns
 - **Calendar** — month grid, tasks on their due dates
 - **Gantt** — timeline with start→due bars
 - **Table** — spreadsheet-style grid
 
-**Tasks** — rich-text description & comments (with **@mentions**), custom statuses, priorities, multiple assignees, start/due dates (calendar picker), tags, **custom fields** (text, number, dropdown, labels, date, checkbox, rating…), subtasks, **checklists**, activity log.
+**Tasks** — rich-text descriptions & comments with **@mentions**, custom statuses, priorities, multiple assignees, start/due dates, tags, **custom fields** (text, number, dropdown, labels, date, checkbox, rating…), subtasks, **checklists**, and an activity log.
 
-**Productivity** — filter / sort / **group-by** (status · assignee · priority) across every view, **⌘K command palette** search, **multi-select + bulk actions**, status workflow editor, **dark mode**.
+**Productivity** — filter / sort / **group-by** (status · assignee · priority) on every view, a **⌘K command palette**, **multi-select + bulk actions**, a status-workflow editor, and **dark mode**.
 
-**Production-minded** — real email/password **auth with sessions** (scrypt-hashed), **Zod-validated** API with consistent errors, role model, render-capped large lists.
+**Real-time** — changes broadcast over Server-Sent Events, so collaborators see edits live without refreshing.
+
+**Built to run in production** — email/password **auth with server-side sessions** (scrypt-hashed), a fully **Zod-validated** API with consistent error handling, and render-capped lists that stay fast at scale.
 
 | Board | Calendar | Gantt |
 |---|---|---|
@@ -41,9 +60,10 @@
 |---|---|
 | Framework | [Next.js 16](https://nextjs.org) (App Router, Turbopack) · React 19 |
 | Language | TypeScript |
-| Styling | Tailwind CSS 4 (ClickUp-style design tokens) |
+| Styling | Tailwind CSS 4 |
 | Database | PostgreSQL + [Prisma 7](https://www.prisma.io) (pg driver adapter) |
 | Data fetching | TanStack Query (optimistic updates) |
+| Realtime | Server-Sent Events |
 | Drag & drop | dnd-kit |
 | UI primitives | Radix UI |
 | Rich text | Tiptap |
@@ -62,7 +82,7 @@ pnpm install
 # 2. Start Postgres (localhost:5544)
 docker compose up -d
 
-# 3. Set up the database + seed demo data
+# 3. Configure env, run migrations, seed demo data
 cp .env.example .env
 pnpm prisma migrate dev
 pnpm db:seed
@@ -71,14 +91,20 @@ pnpm db:seed
 pnpm dev
 ```
 
-Open **http://localhost:3000** and log in with the seeded demo account:
+Open **http://localhost:3000** and log in with the seeded account (or create your own):
 
 ```
 email:    santiago@clickuppp.dev
 password: password
 ```
 
-(All seeded users use the password `password`; or click **Sign up** to create your own.)
+## 🐳 Self-hosting
+
+```bash
+pnpm build && pnpm start
+```
+
+Set `DATABASE_URL` to your Postgres instance and run `pnpm prisma migrate deploy` on deploy. The app runs anywhere Node 20+ runs (a VM, a container, or any Node host); point it at a managed or self-run Postgres. Real-time uses in-process pub/sub — for multiple instances behind a load balancer, swap it for Redis pub/sub (see `lib/events.ts`).
 
 ---
 
@@ -101,7 +127,7 @@ password: password
 app/
   (app)/            # authenticated app shell + routes (list pages)
   login/            # login / signup page
-  api/              # REST route handlers (Zod-validated)
+  api/              # REST route handlers (Zod-validated) + SSE stream
 components/
   views/            # list · board · calendar · gantt · table + filters
   menus/            # status · priority · assignee · date · tag controls
@@ -111,6 +137,7 @@ components/
 lib/
   db.ts             # Prisma client (pg adapter)
   auth.ts           # sessions + scrypt passwords
+  events.ts         # realtime pub/sub
   queries.ts        # shared include shapes + payload types
   grouping.ts       # group-by logic
   view-state.ts     # filters / sort / group-by
@@ -123,14 +150,16 @@ prisma/
 
 ## 🗺️ Roadmap
 
-Done: hierarchy CRUD · 5 views · custom fields · checklists · comments + @mentions · filter/sort/group · ⌘K search · multi-select/bulk · status editor · dark mode · auth + sessions · Zod validation.
+**Shipped** — hierarchy CRUD · 5 views · custom fields · checklists · comments + @mentions · filter/sort/group · ⌘K search · multi-select & bulk actions · status editor · dark mode · auth + sessions · real-time · Zod-validated API.
 
-Planned: real-time collaboration (SSE/WebSockets) · automated tests · notifications/Inbox · attachments · time tracking · task dependencies · role-based permission enforcement · list virtualization.
+**Next up** — automated test suite · notifications / Inbox · file attachments · time tracking · task dependencies · role-based permissions · list virtualization.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) — PRs welcome!
+Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ---
 
 ## 📄 License
 
-[MIT](LICENSE) © contributors. ClickUp® is a trademark of its respective owner; this project is an independent, unofficial clone for educational purposes.
+[MIT](LICENSE) © Santiago Cotto and contributors.
+
+<sub>ClickUp® is a trademark of its respective owner; this is an independent project and is not affiliated with or endorsed by ClickUp.</sub>
