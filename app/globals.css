@@ -1,26 +1,280 @@
 @import "tailwindcss";
 
+/* ----------------------------------------------------------------------------
+   ClickUp design tokens
+---------------------------------------------------------------------------- */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* brand */
+  --cu-purple: #7b68ee;
+  --cu-purple-dark: #6c5ce7;
+  --cu-purple-light: #f1effd;
+  --cu-pink: #fd71af;
+
+  /* surfaces */
+  --cu-bg: #ffffff;
+  --cu-sidebar: #fafbfc;
+  --cu-sidebar-active: #f1effd;
+  --cu-panel: #ffffff;
+  --cu-hover: #f4f5f7;
+  --cu-hover-strong: #eceef1;
+
+  /* lines */
+  --cu-border: #e8eaed;
+  --cu-border-strong: #d8dce0;
+
+  /* text */
+  --cu-text: #1d2129;
+  --cu-text-secondary: #656f7d;
+  --cu-text-tertiary: #9aa1ad;
+
+  /* priority */
+  --cu-urgent: #f50000;
+  --cu-high: #ffcc00;
+  --cu-normal: #6fa1ff;
+  --cu-low: #b5bcc9;
+
+  /* status groups */
+  --cu-status-todo: #87909e;
+  --cu-status-active: #5b9fff;
+  --cu-status-done: #6bc950;
+
+  color-scheme: light;
+}
+
+/* ----------------------------------------------------------------------------
+   Dark theme — overrides the tokens above when <html class="dark">
+---------------------------------------------------------------------------- */
+.dark {
+  --cu-purple: #8c7cf0;
+  --cu-purple-dark: #7b68ee;
+  --cu-purple-light: #2c2550;
+  --cu-pink: #fd71af;
+
+  --cu-bg: #1a1c23;
+  --cu-sidebar: #15171d;
+  --cu-sidebar-active: #2c2550;
+  --cu-panel: #20232c;
+  --cu-hover: #262a34;
+  --cu-hover-strong: #2f333f;
+
+  --cu-border: #2a2e38;
+  --cu-border-strong: #3a3f4c;
+
+  --cu-text: #e6e8ec;
+  --cu-text-secondary: #9aa1ad;
+  --cu-text-tertiary: #6b7280;
+
+  color-scheme: dark;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background: var(--cu-bg);
+  --color-foreground: var(--cu-text);
+
+  --color-cu-purple: var(--cu-purple);
+  --color-cu-purple-dark: var(--cu-purple-dark);
+  --color-cu-purple-light: var(--cu-purple-light);
+  --color-cu-pink: var(--cu-pink);
+
+  --color-cu-bg: var(--cu-bg);
+  --color-cu-sidebar: var(--cu-sidebar);
+  --color-cu-sidebar-active: var(--cu-sidebar-active);
+  --color-cu-panel: var(--cu-panel);
+  --color-cu-hover: var(--cu-hover);
+  --color-cu-hover-strong: var(--cu-hover-strong);
+
+  --color-cu-border: var(--cu-border);
+  --color-cu-border-strong: var(--cu-border-strong);
+
+  --color-cu-text: var(--cu-text);
+  --color-cu-text-secondary: var(--cu-text-secondary);
+  --color-cu-text-tertiary: var(--cu-text-tertiary);
+
+  --color-cu-urgent: var(--cu-urgent);
+  --color-cu-high: var(--cu-high);
+  --color-cu-normal: var(--cu-normal);
+  --color-cu-low: var(--cu-low);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  border-color: var(--cu-border);
+}
+
+html,
+body {
+  height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--cu-bg);
+  color: var(--cu-text);
+  font-family: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* thin ClickUp-style scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: #d4d7dc;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #b9bdc5;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* hide scrollbar utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ----------------------------------------------------------------------------
+   Rich text content (tiptap + stored HTML)
+---------------------------------------------------------------------------- */
+.rich {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--cu-text);
+}
+.rich p {
+  margin: 0 0 0.5em;
+}
+.rich p:last-child {
+  margin-bottom: 0;
+}
+.rich h1 {
+  font-size: 1.5em;
+  font-weight: 700;
+  margin: 0.6em 0 0.3em;
+}
+.rich h2 {
+  font-size: 1.25em;
+  font-weight: 700;
+  margin: 0.6em 0 0.3em;
+}
+.rich h3 {
+  font-size: 1.1em;
+  font-weight: 600;
+  margin: 0.5em 0 0.25em;
+}
+.rich ul,
+.rich ol {
+  margin: 0 0 0.5em;
+  padding-left: 1.4em;
+}
+.rich ul {
+  list-style: disc;
+}
+.rich ol {
+  list-style: decimal;
+}
+.rich li {
+  margin: 0.15em 0;
+}
+.rich a {
+  color: var(--cu-purple);
+  text-decoration: underline;
+}
+.rich blockquote {
+  border-left: 3px solid var(--cu-border-strong);
+  padding-left: 0.8em;
+  margin: 0.5em 0;
+  color: var(--cu-text-secondary);
+}
+.rich code {
+  background: var(--cu-hover-strong);
+  border-radius: 4px;
+  padding: 0.1em 0.3em;
+  font-size: 0.92em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.rich pre {
+  background: #1d2129;
+  color: #e8eaed;
+  border-radius: 8px;
+  padding: 0.8em 1em;
+  margin: 0.5em 0;
+  overflow-x: auto;
+}
+.rich pre code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+}
+.rich strong {
+  font-weight: 700;
+}
+/* tiptap empty placeholder */
+.rich p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--cu-text-tertiary);
+  pointer-events: none;
+  height: 0;
+}
+
+/* form input */
+.cu-input {
+  width: 100%;
+  border-radius: 6px;
+  border: 1px solid var(--cu-border);
+  background: var(--cu-bg);
+  padding: 0.5rem 0.625rem;
+  font-size: 13px;
+  color: var(--cu-text);
+  outline: none;
+}
+.cu-input:focus {
+  border-color: var(--cu-purple);
+}
+.cu-input::placeholder {
+  color: var(--cu-text-tertiary);
+}
+
+/* @mentions */
+.mention {
+  background: var(--cu-purple-light);
+  color: var(--cu-purple-dark);
+  border-radius: 4px;
+  padding: 0.05em 0.3em;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.cu-mention-popup {
+  position: fixed;
+  z-index: 70;
+  min-width: 180px;
+  background: var(--cu-panel);
+  border: 1px solid var(--cu-border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
+  padding: 4px;
+  display: none;
+}
+.cu-mention-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font-size: 13px;
+  color: var(--cu-text);
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.cu-mention-item:hover,
+.cu-mention-item.is-active {
+  background: var(--cu-hover);
 }

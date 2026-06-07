@@ -39,3 +39,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+/app/generated/prisma
+/lib/generated/prisma
+
+# local dev artifacts
+/app-*.png
+/clickup-*.png
+.playwright-mcp/
+.claude/

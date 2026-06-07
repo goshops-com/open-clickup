@@ -1,0 +1,415 @@
+// ClickUp clone — data model
+// Hierarchy: Workspace → Space → Folder → List → Task → Subtask
+// learn more: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ----------------------------------------------------------------------------
+// Users & membership
+// ----------------------------------------------------------------------------
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String?
+  color        String   @default("#7b68ee") // avatar background
+  avatarUrl    String?
+  createdAt    DateTime @default(now())
+
+  memberships   WorkspaceMember[]
+  assignedTasks TaskAssignee[]
+  createdTasks  Task[]            @relation("TaskCreatedBy")
+  comments      Comment[]
+  activities    Activity[]
+  watching      TaskWatcher[]
+  reactions     CommentReaction[]
+  sessions      Session[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  color     String   @default("#7b68ee")
+  avatarUrl String?
+  createdAt DateTime @default(now())
+
+  members WorkspaceMember[]
+  spaces  Space[]
+}
+
+enum MemberRole {
+  OWNER
+  ADMIN
+  MEMBER
+  GUEST
+}
+
+model WorkspaceMember {
+  id          String     @id @default(cuid())
+  workspaceId String
+  userId      String
+  role        MemberRole @default(MEMBER)
+  createdAt   DateTime   @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+}
+
+// ----------------------------------------------------------------------------
+// Hierarchy
+// ----------------------------------------------------------------------------
+
+model Space {
+  id          String   @id @default(cuid())
+  workspaceId String
+  name        String
+  color       String   @default("#7b68ee")
+  icon        String? // emoji or lucide name
+  private     Boolean  @default(false)
+  position    Float    @default(0)
+  createdAt   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  folders   Folder[]
+  lists     List[]
+  tags      Tag[]
+
+  @@index([workspaceId])
+}
+
+model Folder {
+  id        String   @id @default(cuid())
+  spaceId   String
+  name      String
+  position  Float    @default(0)
+  collapsed Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  space Space  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  lists List[]
+
+  @@index([spaceId])
+}
+
+model List {
+  id        String   @id @default(cuid())
+  spaceId   String // denormalized: always set, even for folder lists
+  folderId  String? // null = folderless list (lives directly in space)
+  name      String
+  color     String?
+  icon      String?
+  position  Float    @default(0)
+  createdAt DateTime @default(now())
+
+  space        Space         @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  folder       Folder?       @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  statuses     Status[]
+  customFields CustomField[]
+  tasks        Task[]
+  views        View[]
+
+  @@index([spaceId])
+  @@index([folderId])
+}
+
+// ----------------------------------------------------------------------------
+// Statuses (per-list workflow)
+// ----------------------------------------------------------------------------
+
+enum StatusType {
+  NOT_STARTED
+  ACTIVE
+  DONE
+  CLOSED
+}
+
+model Status {
+  id       String     @id @default(cuid())
+  listId   String
+  name     String
+  color    String     @default("#87909e")
+  type     StatusType @default(NOT_STARTED)
+  position Float      @default(0)
+
+  list  List   @relation(fields: [listId], references: [id], onDelete: Cascade)
+  tasks Task[]
+
+  @@index([listId])
+}
+
+// ----------------------------------------------------------------------------
+// Tasks
+// ----------------------------------------------------------------------------
+
+enum Priority {
+  URGENT
+  HIGH
+  NORMAL
+  LOW
+}
+
+model Task {
+  id           String    @id @default(cuid())
+  listId       String
+  statusId     String
+  parentId     String? // subtask parent
+  name         String
+  description  String? // rich text stored as HTML
+  priority     Priority?
+  position     Float     @default(0)
+  startDate    DateTime?
+  dueDate      DateTime?
+  timeEstimate Int? // minutes
+  createdById  String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  completedAt  DateTime?
+  archived     Boolean   @default(false)
+
+  list              List               @relation(fields: [listId], references: [id], onDelete: Cascade)
+  status            Status             @relation(fields: [statusId], references: [id])
+  parent            Task?              @relation("Subtasks", fields: [parentId], references: [id], onDelete: Cascade)
+  subtasks          Task[]             @relation("Subtasks")
+  createdBy         User?              @relation("TaskCreatedBy", fields: [createdById], references: [id])
+  assignees         TaskAssignee[]
+  tags              TaskTag[]
+  watchers          TaskWatcher[]
+  customFieldValues CustomFieldValue[]
+  comments          Comment[]
+  activities        Activity[]
+  checklists        Checklist[]
+
+  @@index([listId])
+  @@index([statusId])
+  @@index([parentId])
+}
+
+model TaskAssignee {
+  taskId String
+  userId String
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, userId])
+}
+
+model TaskWatcher {
+  taskId String
+  userId String
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, userId])
+}
+
+// ----------------------------------------------------------------------------
+// Tags (space-level)
+// ----------------------------------------------------------------------------
+
+model Tag {
+  id      String @id @default(cuid())
+  spaceId String
+  name    String
+  color   String @default("#656f7d")
+
+  space Space     @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  tasks TaskTag[]
+
+  @@unique([spaceId, name])
+  @@index([spaceId])
+}
+
+model TaskTag {
+  taskId String
+  tagId  String
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  tag  Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, tagId])
+}
+
+// ----------------------------------------------------------------------------
+// Custom fields (per-list)
+// ----------------------------------------------------------------------------
+
+enum CustomFieldType {
+  TEXT
+  TEXTAREA
+  NUMBER
+  MONEY
+  DROPDOWN
+  LABELS
+  DATE
+  CHECKBOX
+  URL
+  EMAIL
+  PHONE
+  RATING
+  PROGRESS
+}
+
+model CustomField {
+  id       String          @id @default(cuid())
+  listId   String
+  name     String
+  type     CustomFieldType
+  config   Json? // type-specific config (e.g. number format, rating max)
+  position Float           @default(0)
+
+  list    List                @relation(fields: [listId], references: [id], onDelete: Cascade)
+  options CustomFieldOption[]
+  values  CustomFieldValue[]
+
+  @@index([listId])
+}
+
+model CustomFieldOption {
+  id            String @id @default(cuid())
+  customFieldId String
+  label         String
+  color         String @default("#656f7d")
+  position      Float  @default(0)
+
+  field CustomField @relation(fields: [customFieldId], references: [id], onDelete: Cascade)
+
+  @@index([customFieldId])
+}
+
+model CustomFieldValue {
+  id            String @id @default(cuid())
+  taskId        String
+  customFieldId String
+  value         Json // flexible: string | number | string[] (option ids) | bool | date
+
+  task  Task        @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  field CustomField @relation(fields: [customFieldId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, customFieldId])
+  @@index([taskId])
+}
+
+// ----------------------------------------------------------------------------
+// Checklists (within a task)
+// ----------------------------------------------------------------------------
+
+model Checklist {
+  id       String @id @default(cuid())
+  taskId   String
+  name     String @default("Checklist")
+  position Float  @default(0)
+
+  task  Task            @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  items ChecklistItem[]
+
+  @@index([taskId])
+}
+
+model ChecklistItem {
+  id          String  @id @default(cuid())
+  checklistId String
+  name        String
+  resolved    Boolean @default(false)
+  position    Float   @default(0)
+
+  checklist Checklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+
+  @@index([checklistId])
+}
+
+// ----------------------------------------------------------------------------
+// Comments & activity
+// ----------------------------------------------------------------------------
+
+model Comment {
+  id        String   @id @default(cuid())
+  taskId    String
+  userId    String
+  body      String // rich text (HTML)
+  parentId  String? // threaded reply
+  resolved  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  task      Task              @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent    Comment?          @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[]         @relation("CommentReplies")
+  reactions CommentReaction[]
+
+  @@index([taskId])
+}
+
+model CommentReaction {
+  id        String @id @default(cuid())
+  commentId String
+  userId    String
+  emoji     String
+
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, userId, emoji])
+}
+
+model Activity {
+  id        String   @id @default(cuid())
+  taskId    String
+  userId    String?
+  type      String // e.g. "status_changed", "assignee_added", "created"
+  data      Json? // before/after payload
+  createdAt DateTime @default(now())
+
+  task Task  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([taskId])
+}
+
+// ----------------------------------------------------------------------------
+// Views (saved per list)
+// ----------------------------------------------------------------------------
+
+enum ViewType {
+  LIST
+  BOARD
+  CALENDAR
+  GANTT
+  TABLE
+}
+
+model View {
+  id       String   @id @default(cuid())
+  listId   String
+  name     String
+  type     ViewType
+  config   Json? // grouping, filters, sorts, visible columns
+  position Float    @default(0)
+
+  list List @relation(fields: [listId], references: [id], onDelete: Cascade)
+
+  @@index([listId])
+}
