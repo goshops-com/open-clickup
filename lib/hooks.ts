@@ -5,6 +5,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { apiGet, apiSend } from "@/lib/api";
 import type { ListData, TaskWithRelations, UserLite, WorkspaceTree } from "@/lib/queries";
 import type { TaskPatch } from "@/lib/tasks";
@@ -14,6 +15,28 @@ export type Bootstrap = { currentUser: UserLite; workspace: WorkspaceTree };
 // ----------------------------------------------------------------------------
 // Queries
 // ----------------------------------------------------------------------------
+
+/** Subscribe to the SSE stream and invalidate caches so collaborators' changes appear live. */
+export function useRealtime() {
+  const qc = useQueryClient();
+  useEffect(() => {
+    const es = new EventSource("/api/stream");
+    es.onmessage = (e) => {
+      try {
+        const event = JSON.parse(e.data) as { type: string; listId?: string };
+        if (event.type === "list" && event.listId) {
+          qc.invalidateQueries({ queryKey: ["list", event.listId] });
+          qc.invalidateQueries({ queryKey: ["task"] });
+        } else if (event.type === "bootstrap") {
+          qc.invalidateQueries({ queryKey: ["bootstrap"] });
+        }
+      } catch {
+        /* ignore malformed event */
+      }
+    };
+    return () => es.close();
+  }, [qc]);
+}
 
 export function useBootstrap() {
   return useQuery({

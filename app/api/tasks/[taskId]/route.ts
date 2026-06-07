@@ -5,6 +5,7 @@ import { updateTask } from "@/lib/tasks";
 import { getTaskDetail } from "@/lib/queries";
 import { requireUser } from "@/lib/auth";
 import { readJson, route, ApiError } from "@/lib/api-helpers";
+import { publish } from "@/lib/events";
 
 type Ctx = { params: Promise<{ taskId: string }> };
 
@@ -39,6 +40,8 @@ export const PATCH = route(async (req, { params }: Ctx) => {
 
 export const DELETE = route(async (_req, { params }: Ctx) => {
   const { taskId } = await params;
+  const task = await prisma.task.findUnique({ where: { id: taskId }, select: { listId: true } });
   await prisma.task.delete({ where: { id: taskId } });
+  if (task) publish({ type: "list", listId: task.listId });
   return NextResponse.json({ ok: true });
 });

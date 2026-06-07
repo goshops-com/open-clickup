@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { Priority } from "@/lib/generated/prisma/client";
 import { taskInclude } from "@/lib/queries";
+import { publish } from "@/lib/events";
 
 export async function createTask(input: {
   listId: string;
@@ -49,6 +50,7 @@ export async function createTask(input: {
     data: { taskId: task.id, userId: input.createdById, type: "created", data: {} },
   });
 
+  publish({ type: "list", listId: input.listId });
   return task;
 }
 
@@ -135,5 +137,6 @@ export async function updateTask(taskId: string, patch: TaskPatch, actorId?: str
     });
   }
 
+  publish({ type: "list", listId: existing.listId });
   return task;
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { PanelLeft } from "lucide-react";
-import { useBootstrap } from "@/lib/hooks";
+import { useBootstrap, useRealtime } from "@/lib/hooks";
 import { WorkspaceProvider } from "@/components/workspace-context";
 import { Sidebar } from "@/components/sidebar/sidebar";
 import { CommandPalette } from "@/components/command-palette";
@@ -11,6 +11,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { data, isLoading, error } = useBootstrap();
   const [collapsed, setCollapsed] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  useRealtime();
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
