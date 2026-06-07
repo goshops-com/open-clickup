@@ -27,6 +27,7 @@ export function useRealtime() {
         if (event.type === "list" && event.listId) {
           qc.invalidateQueries({ queryKey: ["list", event.listId] });
           qc.invalidateQueries({ queryKey: ["task"] });
+          qc.invalidateQueries({ queryKey: ["my-tasks"] });
         } else if (event.type === "bootstrap") {
           qc.invalidateQueries({ queryKey: ["bootstrap"] });
         }
@@ -62,6 +63,24 @@ export function useMarkNotificationsRead() {
   return useMutation({
     mutationFn: (ids?: string[]) => apiSend("/api/notifications/read", "POST", { ids }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["notifications"] }),
+  });
+}
+
+export type MyTask = {
+  id: string;
+  name: string;
+  listId: string;
+  priority: string | null;
+  startDate: string | null;
+  dueDate: string | null;
+  status: { name: string; color: string; type: string };
+  list: { name: string; space: { name: string; color: string } };
+};
+
+export function useMyTasks() {
+  return useQuery({
+    queryKey: ["my-tasks"],
+    queryFn: () => apiGet<{ tasks: MyTask[] }>("/api/me/tasks"),
   });
 }
 

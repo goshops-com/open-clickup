@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, usePathname, useRouter } from "next/navigation";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import {
   ChevronRight,
@@ -37,6 +37,8 @@ export function Sidebar({ onCollapse }: { onCollapse?: () => void }) {
   const { workspace } = useWorkspace();
   const { createSpace } = useHierarchy();
   const [creatingSpace, setCreatingSpace] = useState(false);
+  const router = useRouter();
+  const pathname = usePathname();
 
   return (
     <aside className="flex h-full w-[var(--sidebar-w,260px)] shrink-0 flex-col border-r border-cu-border bg-cu-sidebar text-cu-text">
@@ -75,7 +77,12 @@ export function Sidebar({ onCollapse }: { onCollapse?: () => void }) {
 
       {/* Primary nav */}
       <nav className="px-2">
-        <NavItem icon={<House className="h-4 w-4" />} label="Home" />
+        <NavItem
+          icon={<House className="h-4 w-4" />}
+          label="Home"
+          active={pathname === "/home"}
+          onClick={() => router.push("/home")}
+        />
         <InboxButton />
         <NavItem icon={<LayoutGrid className="h-4 w-4" />} label="Dashboards" />
       </nav>
@@ -128,9 +135,27 @@ export function Sidebar({ onCollapse }: { onCollapse?: () => void }) {
   );
 }
 
-function NavItem({ icon, label, badge }: { icon: React.ReactNode; label: string; badge?: number }) {
+function NavItem({
+  icon,
+  label,
+  badge,
+  onClick,
+  active,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  badge?: number;
+  onClick?: () => void;
+  active?: boolean;
+}) {
   return (
-    <button className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-[13px] text-cu-text hover:bg-cu-hover-strong">
+    <button
+      onClick={onClick}
+      className={cn(
+        "flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-[13px] text-cu-text hover:bg-cu-hover-strong",
+        active && "bg-cu-sidebar-active font-medium",
+      )}
+    >
       <span className="text-cu-text-secondary">{icon}</span>
       <span>{label}</span>
       {badge != null && (
