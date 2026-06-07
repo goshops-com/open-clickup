@@ -1,29 +1,11 @@
 import { cookies } from "next/headers";
-import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { prisma } from "@/lib/db";
 import { ApiError } from "@/lib/api-helpers";
 
+export { hashPassword, verifyPassword } from "@/lib/password";
+
 const SESSION_COOKIE = "cu_session";
 const SESSION_DAYS = 30;
-
-// ----------------------------------------------------------------------------
-// Passwords (scrypt — built into node, no native bcrypt dependency)
-// ----------------------------------------------------------------------------
-
-export function hashPassword(pw: string): string {
-  const salt = randomBytes(16).toString("hex");
-  const hash = scryptSync(pw, salt, 64).toString("hex");
-  return `${salt}:${hash}`;
-}
-
-export function verifyPassword(pw: string, stored: string | null | undefined): boolean {
-  if (!stored) return false;
-  const [salt, hash] = stored.split(":");
-  if (!salt || !hash) return false;
-  const test = scryptSync(pw, salt, 64);
-  const orig = Buffer.from(hash, "hex");
-  return orig.length === test.length && timingSafeEqual(orig, test);
-}
 
 // ----------------------------------------------------------------------------
 // Sessions (server-side, revocable, httpOnly cookie holds the session id)

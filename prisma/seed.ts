@@ -1,16 +1,11 @@
 import "dotenv/config";
-import { randomBytes, scryptSync } from "node:crypto";
 import { PrismaClient, Priority, StatusType, CustomFieldType, ViewType } from "../lib/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { hashPassword } from "../lib/password";
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
 
-// same scheme as lib/auth.ts hashPassword (salt:hash, scrypt)
-function hashPassword(pw: string): string {
-  const salt = randomBytes(16).toString("hex");
-  return `${salt}:${scryptSync(pw, salt, 64).toString("hex")}`;
-}
 const DEMO_PASSWORD = "password";
 
 const STATUS_TEMPLATE = [
