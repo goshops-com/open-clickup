@@ -30,6 +30,7 @@ import { useWorkspace } from "@/components/workspace-context";
 import { useHierarchy } from "@/lib/hooks";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { InboxButton } from "@/components/sidebar/inbox";
+import { ProfileDialog } from "@/components/profile-dialog";
 import type { SpaceNode, FolderNode, ListNode } from "@/lib/queries";
 import { Avatar } from "@/components/ui/avatar";
 
@@ -169,6 +170,7 @@ function UserSwitcher() {
   const { workspace, currentUser } = useWorkspace();
   const qc = useQueryClient();
   const members = workspace.members.map((m) => m.user);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   async function switchTo(userId: string) {
     if (userId === currentUser.id) return;
@@ -212,6 +214,12 @@ function UserSwitcher() {
           ))}
           <DropdownMenu.Separator className="my-1 h-px bg-cu-border" />
           <DropdownMenu.Item
+            onSelect={() => setProfileOpen(true)}
+            className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-[13px] outline-none hover:bg-cu-hover focus:bg-cu-hover"
+          >
+            <Settings className="h-4 w-4" /> Edit profile
+          </DropdownMenu.Item>
+          <DropdownMenu.Item
             onSelect={logout}
             className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-[13px] text-cu-text-secondary outline-none hover:bg-cu-hover focus:bg-cu-hover"
           >
@@ -219,6 +227,7 @@ function UserSwitcher() {
           </DropdownMenu.Item>
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
+      <ProfileDialog open={profileOpen} onClose={() => setProfileOpen(false)} />
     </DropdownMenu.Root>
   );
 }
