@@ -116,6 +116,14 @@ export function ListPage({ listId }: { listId: string }) {
     setOpenTaskId(task.id);
   }
 
+  // global "c" keyboard shortcut → create a task in this list
+  useEffect(() => {
+    const handler = () => void addTask();
+    window.addEventListener("create-task", handler);
+    return () => window.removeEventListener("create-task", handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, listId]);
+
   if (isLoading) return <PageSkeleton />;
   if (error || !data)
     return (

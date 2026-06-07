@@ -6,18 +6,40 @@ import { useBootstrap, useRealtime } from "@/lib/hooks";
 import { WorkspaceProvider } from "@/components/workspace-context";
 import { Sidebar } from "@/components/sidebar/sidebar";
 import { CommandPalette } from "@/components/command-palette";
+import { ShortcutsHelp } from "@/components/shortcuts-help";
+
+function isTyping(target: EventTarget | null): boolean {
+  const el = target as HTMLElement | null;
+  if (!el) return false;
+  return el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable;
+}
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { data, isLoading, error } = useBootstrap();
   const [collapsed, setCollapsed] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   useRealtime();
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
+      // ⌘K / Ctrl+K — search (works even while typing)
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
         setPaletteOpen(true);
+        return;
+      }
+      // single-key shortcuts: skip when typing or holding a modifier
+      if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return;
+      if (e.key === "?") {
+        e.preventDefault();
+        setHelpOpen((o) => !o);
+      } else if (e.key === "/") {
+        e.preventDefault();
+        setPaletteOpen(true);
+      } else if (e.key.toLowerCase() === "c") {
+        e.preventDefault();
+        window.dispatchEvent(new Event("create-task"));
       }
     }
     function onOpen() { setPaletteOpen(true); }
@@ -53,6 +75,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         )}
         <main className="flex min-w-0 flex-1 flex-col bg-cu-bg">{children}</main>
         <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+        <ShortcutsHelp open={helpOpen} onClose={() => setHelpOpen(false)} />
       </div>
     </WorkspaceProvider>
   );
