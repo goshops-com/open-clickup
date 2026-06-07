@@ -97,7 +97,16 @@ export async function getListData(listId: string) {
     include: taskInclude,
   });
 
-  return { list, tasks };
+  // dependency edges between visible tasks (for Gantt arrows)
+  const taskIds = tasks.map((t) => t.id);
+  const dependencies = taskIds.length
+    ? await prisma.taskDependency.findMany({
+        where: { blockerId: { in: taskIds }, blockedId: { in: taskIds } },
+        select: { id: true, blockerId: true, blockedId: true },
+      })
+    : [];
+
+  return { list, tasks, dependencies };
 }
 
 export type ListData = NonNullable<Awaited<ReturnType<typeof getListData>>>;

@@ -17,6 +17,26 @@ import { AvatarStack } from "@/components/ui/avatar";
 
 const DAY_W = 34;
 const NAME_W = 260;
+const ROW_H = 39; // timeline cell (38) + row border (1)
+
+type Geo = { cy: number; left: number; right: number; visible: boolean };
+
+function barGeometry(task: TaskWithRelations, start: Date, rowIndex: number): Geo {
+  const s = task.startDate
+    ? startOfDay(new Date(task.startDate))
+    : task.dueDate
+      ? startOfDay(new Date(task.dueDate))
+      : null;
+  const e = task.dueDate ? startOfDay(new Date(task.dueDate)) : s;
+  const offset = s ? differenceInCalendarDays(s, start) : 0;
+  const span = s && e ? differenceInCalendarDays(e, s) + 1 : 0;
+  return {
+    cy: rowIndex * ROW_H + ROW_H / 2,
+    left: offset * DAY_W + 3,
+    right: offset * DAY_W + span * DAY_W - 3,
+    visible: span > 0,
+  };
+}
 
 export function GanttView({
   data,
@@ -26,6 +46,7 @@ export function GanttView({
   onOpenTask: (id: string) => void;
 }) {
   const tasks = data.tasks;
+  const dependencies = data.dependencies;
 
   const { start, days } = useMemo(() => {
     const dates: Date[] = [];
@@ -40,6 +61,24 @@ export function GanttView({
     max = startOfDay(addDays(max > today ? max : today, 7));
     return { start: min, days: eachDayOfInterval({ start: min, end: max }) };
   }, [tasks]);
+
+  // bar geometry per task (for drawing dependency arrows)
+  const geo = useMemo(() => {
+    const map = new Map<string, Geo>();
+    tasks.forEach((t, i) => map.set(t.id, barGeometry(t, start, i)));
+    return map;
+  }, [tasks, start]);
+
+  const arrows = useMemo(() => {
+    return dependencies
+      .map((d) => {
+        const from = geo.get(d.blockerId);
+        const to = geo.get(d.blockedId);
+        if (!from || !to || !from.visible || !to.visible) return null;
+        return { id: d.id, x1: from.right, y1: from.cy, x2: to.left, y2: to.cy };
+      })
+      .filter((a): a is NonNullable<typeof a> => a !== null);
+  }, [dependencies, geo]);
 
   // group day columns by month for the header
   const months = useMemo(() => {
@@ -101,9 +140,44 @@ export function GanttView({
         </div>
 
         {/* rows */}
-        {tasks.map((task) => (
-          <GanttRow key={task.id} task={task} start={start} days={days} onOpenTask={onOpenTask} />
-        ))}
+        <div className="relative">
+          {tasks.map((task) => (
+            <GanttRow key={task.id} task={task} start={start} days={days} onOpenTask={onOpenTask} />
+          ))}
+          {arrows.length > 0 && (
+            <svg
+              className="pointer-events-none absolute top-0 z-[5] overflow-visible"
+              style={{ left: NAME_W, width: days.length * DAY_W, height: tasks.length * ROW_H }}
+            >
+              <defs>
+                <marker
+                  id="gantt-arrowhead"
+                  markerWidth="6"
+                  markerHeight="6"
+                  refX="5"
+                  refY="3"
+                  orient="auto"
+                >
+                  <path d="M0,0 L6,3 L0,6 Z" fill="#9aa1ad" />
+                </marker>
+              </defs>
+              {arrows.map((a) => {
+                const gap = 18;
+                const d = `M ${a.x1} ${a.y1} C ${a.x1 + gap} ${a.y1}, ${a.x2 - gap} ${a.y2}, ${a.x2 - 2} ${a.y2}`;
+                return (
+                  <path
+                    key={a.id}
+                    d={d}
+                    fill="none"
+                    stroke="#9aa1ad"
+                    strokeWidth={1.5}
+                    markerEnd="url(#gantt-arrowhead)"
+                  />
+                );
+              })}
+            </svg>
+          )}
+        </div>
       </div>
     </div>
   );
