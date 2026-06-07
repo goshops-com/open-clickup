@@ -34,6 +34,7 @@ model User {
   sessions      Session[]
   notifications Notification[]    @relation("NotifRecipient")
   actedNotifs   Notification[]    @relation("NotifActor")
+  timeEntries   TimeEntry[]
 }
 
 model Notification {
@@ -220,6 +221,7 @@ model Task {
   checklists        Checklist[]
   notifications     Notification[]
   attachments       Attachment[]
+  timeEntries       TimeEntry[]
 
   @@index([listId])
   @@index([statusId])
@@ -448,4 +450,25 @@ model Attachment {
   task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
   @@index([taskId])
+}
+
+// ----------------------------------------------------------------------------
+// Time tracking
+// ----------------------------------------------------------------------------
+
+model TimeEntry {
+  id          String    @id @default(cuid())
+  taskId      String
+  userId      String
+  duration    Int       @default(0) // seconds (final, for stopped/manual entries)
+  description String?
+  startedAt   DateTime  @default(now())
+  endedAt     DateTime? // null = timer currently running
+  createdAt   DateTime  @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@index([userId])
 }

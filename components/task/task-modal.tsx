@@ -27,6 +27,7 @@ import { TagControl } from "@/components/menus/tag-control";
 import { RichEditor, RichText } from "@/components/ui/rich-editor";
 import { Checklists } from "@/components/task/checklists";
 import { Attachments } from "@/components/task/attachments";
+import { TimeTracking } from "@/components/task/time-tracking";
 import { useWorkspace } from "@/components/workspace-context";
 import { format } from "date-fns";
 
@@ -159,6 +160,14 @@ export function TaskModal({
                   <Checklists taskId={taskId} checklists={task.checklists} onChange={invalidate} />
 
                   <Attachments taskId={taskId} attachments={task.attachments} onChange={invalidate} />
+
+                  <TimeTracking
+                    taskId={taskId}
+                    currentUserId={currentUser.id}
+                    timeEstimate={task.timeEstimate}
+                    entries={task.timeEntries}
+                    onChange={invalidate}
+                  />
 
                   {/* activity / comments */}
                   <section className="mt-8">
