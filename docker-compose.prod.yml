@@ -1,0 +1,35 @@
+# One-command self-host: `docker compose -f docker-compose.prod.yml up --build`
+# App on http://localhost:3000. Seed demo data (optional):
+#   docker compose -f docker-compose.prod.yml exec app pnpm db:seed
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: clickuppp
+      POSTGRES_PASSWORD: clickuppp
+      POSTGRES_DB: clickuppp
+    volumes:
+      - clickuppp-prod-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U clickuppp"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      target: runner
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://clickuppp:clickuppp@db:5432/clickuppp
+      NODE_ENV: production
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+
+volumes:
+  clickuppp-prod-data:

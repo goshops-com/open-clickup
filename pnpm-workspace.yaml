@@ -1,3 +1,10 @@
+# pnpm 10 reads build-script approval from here. Approve the packages whose
+# install scripts we want to run; explicitly ignore the ones we don't need.
+onlyBuiltDependencies:
+  - "@prisma/client"
+  - "@prisma/engines"
+  - prisma
+  - esbuild
 ignoredBuiltDependencies:
   - sharp
   - unrs-resolver

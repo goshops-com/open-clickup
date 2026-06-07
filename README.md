@@ -101,6 +101,18 @@ password: password
 
 ## 🐳 Self-hosting
 
+**Docker (app + database, one command):**
+
+```bash
+docker compose -f docker-compose.prod.yml up --build
+# → http://localhost:3000  (migrations run automatically on boot)
+
+# optional: load sample data
+docker compose -f docker-compose.prod.yml exec app pnpm db:seed
+```
+
+**Or run the Node server directly:**
+
 ```bash
 pnpm build && pnpm start
 ```
