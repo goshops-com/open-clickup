@@ -48,3 +48,9 @@ next-env.d.ts
 /clickup-*.png
 .playwright-mcp/
 .claude/
+
+# playwright
+/test-results/
+/playwright-report/
+/blob-report/
+.playwright/
