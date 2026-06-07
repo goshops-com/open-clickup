@@ -10,10 +10,12 @@ export function AssigneeControl({
   assignees,
   onChange,
   size = "md",
+  label = "Assignees",
 }: {
   assignees: UserLite[];
   onChange: (userIds: string[]) => void;
   size?: "sm" | "md" | "lg";
+  label?: string;
 }) {
   const { workspace } = useWorkspace();
   const members = workspace.members.map((m) => m.user);
@@ -32,7 +34,7 @@ export function AssigneeControl({
         <button
           onClick={(e) => e.stopPropagation()}
           className="flex items-center rounded outline-none hover:opacity-90"
-          title="Assignees"
+          title={label}
         >
           {assignees.length ? (
             <AvatarStack users={assignees} size={size} />
@@ -49,7 +51,7 @@ export function AssigneeControl({
           onClick={(e) => e.stopPropagation()}
         >
           <div className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-cu-text-tertiary">
-            Assignees
+            {label}
           </div>
           {members.map((u) => (
             <DropdownMenu.Item

@@ -21,6 +21,7 @@ const patchSchema = z.object({
   archived: z.boolean().optional(),
   assigneeIds: z.array(z.string()).optional(),
   tagIds: z.array(z.string()).optional(),
+  watcherIds: z.array(z.string()).optional(),
 });
 
 export const GET = route(async (_req, { params }: Ctx) => {

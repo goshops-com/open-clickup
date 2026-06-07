@@ -11,6 +11,7 @@ import {
   Calendar as CalendarIcon,
   Flag,
   Tag as TagIcon,
+  Eye,
   Plus,
 } from "lucide-react";
 import { apiGet, apiSend } from "@/lib/api";
@@ -26,6 +27,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { TagControl } from "@/components/menus/tag-control";
 import { RichEditor, RichText } from "@/components/ui/rich-editor";
 import { Checklists } from "@/components/task/checklists";
+import { CommentReactions } from "@/components/task/comment-reactions";
 import { Attachments } from "@/components/task/attachments";
 import { TimeTracking } from "@/components/task/time-tracking";
 import { Dependencies } from "@/components/task/dependencies";
@@ -182,7 +184,7 @@ export function TaskModal({
                     <h3 className="mb-3 text-[13px] font-semibold text-cu-text-secondary">Activity</h3>
                     <div className="space-y-4">
                       {task.comments.map((c) => (
-                        <div key={c.id} className="flex gap-2.5">
+                        <div key={c.id} className="group flex gap-2.5">
                           <Avatar user={c.user} size="lg" />
                           <div className="min-w-0 flex-1">
                             <div className="flex items-baseline gap-2">
@@ -192,6 +194,12 @@ export function TaskModal({
                               </span>
                             </div>
                             <RichText html={c.body} className="mt-0.5" />
+                            <CommentReactions
+                              commentId={c.id}
+                              reactions={c.reactions}
+                              currentUserId={currentUser.id}
+                              onChange={invalidate}
+                            />
                           </div>
                         </div>
                       ))}
@@ -245,6 +253,15 @@ export function TaskModal({
                       spaceId={task.list.spaceId}
                       selected={task.tags}
                       onChange={(tagIds) => update.mutate({ tagIds })}
+                    />
+                  </DetailRow>
+
+                  <DetailRow icon={<Eye className="h-4 w-4" />} label="Watchers">
+                    <AssigneeControl
+                      assignees={task.watchers.map((w) => w.user)}
+                      onChange={(ids) => update.mutate({ watcherIds: ids })}
+                      size="md"
+                      label="Watchers"
                     />
                   </DetailRow>
 

@@ -67,12 +67,13 @@ export type TaskPatch = {
   archived?: boolean;
   assigneeIds?: string[]; // full replacement set
   tagIds?: string[]; // full replacement set
+  watcherIds?: string[]; // full replacement set
 };
 
 export async function updateTask(taskId: string, patch: TaskPatch, actorId?: string) {
   const existing = await prisma.task.findUnique({
     where: { id: taskId },
-    include: { assignees: true, tags: true, status: true },
+    include: { assignees: true, tags: true, watchers: true, status: true },
   });
   if (!existing) throw new Error("Task not found");
 
@@ -106,6 +107,18 @@ export async function updateTask(taskId: string, patch: TaskPatch, actorId?: str
     addedAssignees = toAdd;
     const toRemove = [...current].filter((id) => !next.has(id));
     data.assignees = {
+      deleteMany: toRemove.length ? { userId: { in: toRemove } } : undefined,
+      create: toAdd.map((userId) => ({ userId })),
+    };
+  }
+
+  // watchers full-set replacement
+  if (patch.watcherIds !== undefined) {
+    const current = new Set(existing.watchers.map((w) => w.userId));
+    const next = new Set(patch.watcherIds);
+    const toAdd = [...next].filter((id) => !current.has(id));
+    const toRemove = [...current].filter((id) => !next.has(id));
+    data.watchers = {
       deleteMany: toRemove.length ? { userId: { in: toRemove } } : undefined,
       create: toAdd.map((userId) => ({ userId })),
     };
