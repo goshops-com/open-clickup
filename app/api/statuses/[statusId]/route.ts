@@ -9,6 +9,7 @@ const schema = z.object({
   name: z.string().trim().min(1).optional(),
   color: z.string().optional(),
   type: z.enum(["NOT_STARTED", "ACTIVE", "DONE", "CLOSED"]).optional(),
+  wipLimit: z.number().int().positive().nullish(),
 });
 
 export const PATCH = route(async (req, { params }: Ctx) => {
@@ -18,6 +19,7 @@ export const PATCH = route(async (req, { params }: Ctx) => {
   if (body.name !== undefined) data.name = body.name;
   if (body.color !== undefined) data.color = body.color;
   if (body.type !== undefined) data.type = body.type as StatusType;
+  if (body.wipLimit !== undefined) data.wipLimit = body.wipLimit;
   const status = await prisma.status.update({ where: { id: statusId }, data });
   return NextResponse.json(status);
 });

@@ -171,6 +171,7 @@ model Status {
   color    String     @default("#87909e")
   type     StatusType @default(NOT_STARTED)
   position Float      @default(0)
+  wipLimit Int? // board WIP limit (max tasks in this column)
 
   list  List   @relation(fields: [listId], references: [id], onDelete: Cascade)
   tasks Task[]
