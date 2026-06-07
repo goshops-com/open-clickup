@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { Priority } from "@/lib/generated/prisma/client";
 import { taskInclude } from "@/lib/queries";
 import { publish } from "@/lib/events";
+import { createNotifications } from "@/lib/notifications";
 
 export async function createTask(input: {
   listId: string;
@@ -97,10 +98,12 @@ export async function updateTask(taskId: string, patch: TaskPatch, actorId?: str
   }
 
   // assignees full-set replacement
+  let addedAssignees: string[] = [];
   if (patch.assigneeIds !== undefined) {
     const current = new Set(existing.assignees.map((a) => a.userId));
     const next = new Set(patch.assigneeIds);
     const toAdd = [...next].filter((id) => !current.has(id));
+    addedAssignees = toAdd;
     const toRemove = [...current].filter((id) => !next.has(id));
     data.assignees = {
       deleteMany: toRemove.length ? { userId: { in: toRemove } } : undefined,
@@ -138,5 +141,15 @@ export async function updateTask(taskId: string, patch: TaskPatch, actorId?: str
   }
 
   publish({ type: "list", listId: existing.listId });
+
+  if (addedAssignees.length && actorId) {
+    await createNotifications({
+      recipientIds: addedAssignees,
+      actorId,
+      taskId,
+      type: "assigned",
+      body: "assigned you a task",
+    });
+  }
   return task;
 }

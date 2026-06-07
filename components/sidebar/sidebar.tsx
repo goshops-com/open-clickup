@@ -10,7 +10,6 @@ import {
   Plus,
   Search,
   House,
-  Inbox,
   LayoutGrid,
   Ellipsis,
   Folder as FolderIcon,
@@ -30,6 +29,7 @@ import { apiSend } from "@/lib/api";
 import { useWorkspace } from "@/components/workspace-context";
 import { useHierarchy } from "@/lib/hooks";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { InboxButton } from "@/components/sidebar/inbox";
 import type { SpaceNode, FolderNode, ListNode } from "@/lib/queries";
 import { Avatar } from "@/components/ui/avatar";
 
@@ -76,7 +76,7 @@ export function Sidebar({ onCollapse }: { onCollapse?: () => void }) {
       {/* Primary nav */}
       <nav className="px-2">
         <NavItem icon={<House className="h-4 w-4" />} label="Home" />
-        <NavItem icon={<Inbox className="h-4 w-4" />} label="Inbox" badge={3} />
+        <InboxButton />
         <NavItem icon={<LayoutGrid className="h-4 w-4" />} label="Dashboards" />
       </nav>
 

@@ -32,6 +32,25 @@ model User {
   watching      TaskWatcher[]
   reactions     CommentReaction[]
   sessions      Session[]
+  notifications Notification[]    @relation("NotifRecipient")
+  actedNotifs   Notification[]    @relation("NotifActor")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String // recipient
+  actorId   String? // who triggered it
+  taskId    String?
+  type      String // "mention" | "assigned" | "comment"
+  body      String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user  User  @relation("NotifRecipient", fields: [userId], references: [id], onDelete: Cascade)
+  actor User? @relation("NotifActor", fields: [actorId], references: [id])
+  task  Task? @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Session {
@@ -199,6 +218,7 @@ model Task {
   comments          Comment[]
   activities        Activity[]
   checklists        Checklist[]
+  notifications     Notification[]
 
   @@index([listId])
   @@index([statusId])

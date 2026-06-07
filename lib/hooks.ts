@@ -30,12 +30,39 @@ export function useRealtime() {
         } else if (event.type === "bootstrap") {
           qc.invalidateQueries({ queryKey: ["bootstrap"] });
         }
+        qc.invalidateQueries({ queryKey: ["notifications"] });
       } catch {
         /* ignore malformed event */
       }
     };
     return () => es.close();
   }, [qc]);
+}
+
+export type NotificationItem = {
+  id: string;
+  type: string;
+  body: string;
+  read: boolean;
+  createdAt: string;
+  actor: UserLite | null;
+  task: { id: string; name: string; listId: string } | null;
+};
+
+export function useNotifications() {
+  return useQuery({
+    queryKey: ["notifications"],
+    queryFn: () => apiGet<{ notifications: NotificationItem[]; unread: number }>("/api/notifications"),
+    refetchInterval: 30_000,
+  });
+}
+
+export function useMarkNotificationsRead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (ids?: string[]) => apiSend("/api/notifications/read", "POST", { ids }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["notifications"] }),
+  });
 }
 
 export function useBootstrap() {
