@@ -54,3 +54,7 @@ next-env.d.ts
 /playwright-report/
 /blob-report/
 .playwright/
+
+# user uploads
+/public/uploads/*
+!/public/uploads/.gitkeep

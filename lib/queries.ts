@@ -116,6 +116,7 @@ export async function getTaskDetail(taskId: string) {
       ...taskInclude,
       createdBy: { select: userSelect },
       watchers: { include: { user: { select: userSelect } } },
+      attachments: { orderBy: { createdAt: "desc" } },
       checklists: {
         orderBy: { position: "asc" },
         include: { items: { orderBy: { position: "asc" } } },

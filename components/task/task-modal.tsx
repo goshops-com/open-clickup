@@ -26,6 +26,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { TagControl } from "@/components/menus/tag-control";
 import { RichEditor, RichText } from "@/components/ui/rich-editor";
 import { Checklists } from "@/components/task/checklists";
+import { Attachments } from "@/components/task/attachments";
 import { useWorkspace } from "@/components/workspace-context";
 import { format } from "date-fns";
 
@@ -156,6 +157,8 @@ export function TaskModal({
                   </section>
 
                   <Checklists taskId={taskId} checklists={task.checklists} onChange={invalidate} />
+
+                  <Attachments taskId={taskId} attachments={task.attachments} onChange={invalidate} />
 
                   {/* activity / comments */}
                   <section className="mt-8">
