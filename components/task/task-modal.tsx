@@ -28,6 +28,7 @@ import { RichEditor, RichText } from "@/components/ui/rich-editor";
 import { Checklists } from "@/components/task/checklists";
 import { Attachments } from "@/components/task/attachments";
 import { TimeTracking } from "@/components/task/time-tracking";
+import { Dependencies } from "@/components/task/dependencies";
 import { useWorkspace } from "@/components/workspace-context";
 import { format } from "date-fns";
 
@@ -166,6 +167,13 @@ export function TaskModal({
                     currentUserId={currentUser.id}
                     timeEstimate={task.timeEstimate}
                     entries={task.timeEntries}
+                    onChange={invalidate}
+                  />
+
+                  <Dependencies
+                    taskId={taskId}
+                    blockedBy={task.blockedBy}
+                    blocking={task.blocking}
                     onChange={invalidate}
                   />
 

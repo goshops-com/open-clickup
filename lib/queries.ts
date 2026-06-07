@@ -121,6 +121,20 @@ export async function getTaskDetail(taskId: string) {
         orderBy: { startedAt: "desc" },
         include: { user: { select: userSelect } },
       },
+      blockedBy: {
+        include: {
+          blocker: {
+            select: { id: true, name: true, listId: true, status: { select: { name: true, color: true, type: true } } },
+          },
+        },
+      },
+      blocking: {
+        include: {
+          blocked: {
+            select: { id: true, name: true, listId: true, status: { select: { name: true, color: true, type: true } } },
+          },
+        },
+      },
       checklists: {
         orderBy: { position: "asc" },
         include: { items: { orderBy: { position: "asc" } } },
