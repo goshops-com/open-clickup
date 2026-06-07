@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  DATABASE_URL: postgresql://clickuppp:clickuppp@localhost:5544/clickuppp?schema=public
+
+jobs:
+  build:
+    name: Lint · Typecheck · Test · Build
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: clickuppp
+          POSTGRES_PASSWORD: clickuppp
+          POSTGRES_DB: clickuppp
+        ports:
+          - 5544:5432
+        options: >-
+          --health-cmd "pg_isready -U clickuppp"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm prisma generate
+      - run: pnpm prisma migrate deploy
+      - run: pnpm lint
+      - run: npx tsc --noEmit
+      - run: pnpm test
+      - run: pnpm build
+
+  e2e:
+    name: E2E (Playwright)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: clickuppp
+          POSTGRES_PASSWORD: clickuppp
+          POSTGRES_DB: clickuppp
+        ports:
+          - 5544:5432
+        options: >-
+          --health-cmd "pg_isready -U clickuppp"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm prisma generate
+      - run: pnpm prisma migrate deploy
+      - run: pnpm db:seed
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm exec playwright test
+        env:
+          CI: "true"

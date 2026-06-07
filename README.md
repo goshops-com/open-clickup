@@ -6,6 +6,7 @@
 
 Hierarchy, five views, custom fields, real-time collaboration and dark mode — own your data, no per-seat pricing.
 
+[![CI](https://github.com/goshops-com/open-clickup/actions/workflows/ci.yml/badge.svg)](https://github.com/goshops-com/open-clickup/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-7b68ee.svg)](LICENSE)
 ![Next.js](https://img.shields.io/badge/Next.js-16-000000.svg)
 ![React](https://img.shields.io/badge/React-19-149eca.svg)

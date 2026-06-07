@@ -78,7 +78,8 @@ function OptionPicker({
   function toggle(id: string) {
     if (multi) {
       const next = new Set(selected);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       onChange([...next]);
     } else {
       onChange(selected.has(id) ? null : id);

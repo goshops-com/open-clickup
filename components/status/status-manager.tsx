@@ -6,7 +6,6 @@ import * as Popover from "@radix-ui/react-popover";
 import { useQueryClient } from "@tanstack/react-query";
 import { X, Plus, Trash2, ChevronUp, ChevronDown, Check } from "lucide-react";
 import { apiSend } from "@/lib/api";
-import { cn } from "@/lib/utils";
 import type { StatusModel } from "@/lib/queries";
 import { StatusType } from "@/lib/enums";
 import { StatusCircle } from "@/components/menus/status-control";

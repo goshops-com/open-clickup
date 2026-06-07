@@ -4,7 +4,6 @@ import { prisma } from "@/lib/db";
 import { readJson, route } from "@/lib/api-helpers";
 
 type Ctx = { params: Promise<{ taskId: string; fieldId: string }> };
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const schema = z.object({ value: z.any() });
 
 // upsert (or clear) a custom field value for a task

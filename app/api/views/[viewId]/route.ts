@@ -5,7 +5,6 @@ import { readJson, route } from "@/lib/api-helpers";
 
 type Ctx = { params: Promise<{ viewId: string }> };
 const schema = z.object({
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   config: z.any().optional(),
   name: z.string().trim().min(1).optional(),
 });

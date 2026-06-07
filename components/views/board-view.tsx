@@ -21,7 +21,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { Plus, MessageSquare, GitBranch } from "lucide-react";
 import { cn, midpoint } from "@/lib/utils";
-import type { ListData, TaskWithRelations, StatusModel } from "@/lib/queries";
+import type { ListData, TaskWithRelations } from "@/lib/queries";
 import { useUpdateTask, useCreateTask } from "@/lib/hooks";
 import { useWorkspace } from "@/components/workspace-context";
 import { groupTasks, type TaskGroup } from "@/lib/grouping";

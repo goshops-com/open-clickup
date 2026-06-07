@@ -34,7 +34,7 @@ import type { SpaceNode, FolderNode, ListNode } from "@/lib/queries";
 import { Avatar } from "@/components/ui/avatar";
 
 export function Sidebar({ onCollapse }: { onCollapse?: () => void }) {
-  const { workspace, currentUser } = useWorkspace();
+  const { workspace } = useWorkspace();
   const { createSpace } = useHierarchy();
   const [creatingSpace, setCreatingSpace] = useState(false);
 
