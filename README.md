@@ -167,11 +167,15 @@ prisma/
 
 ## 🗺️ Roadmap
 
-**Shipped** — hierarchy CRUD · 5 views · custom fields · checklists · comments + @mentions · filter/sort/group · ⌘K search · multi-select & bulk actions · status editor · dark mode · auth + sessions · real-time · Zod-validated API.
+Future work is tracked as **[GitHub Issues labeled `roadmap`](https://github.com/goshops-com/open-clickup/issues?q=is%3Aissue+label%3Aroadmap)** — e.g. dashboards, automations, a public API + webhooks, Redis-backed real-time for multi-instance, S3 storage, SSO, docs/wiki, and more. Good entry points carry the `good first issue` label.
 
-**Next up** — automated test suite · notifications / Inbox · file attachments · time tracking · task dependencies · role-based permissions · list virtualization.
+## 🤝 Contributing
 
 Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+**Building with an AI agent (or want the project's engineering guide)?** Start at
+**[AGENTS.md](AGENTS.md)**, which links to the product vision, the engineering
+principles, the end-to-end workflow, and the [decision records](docs/decisions/).
 
 ---
 
