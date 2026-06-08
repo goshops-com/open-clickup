@@ -3,6 +3,7 @@ import { Priority } from "@/lib/generated/prisma/client";
 import { taskInclude } from "@/lib/queries";
 import { publish } from "@/lib/events";
 import { createNotifications } from "@/lib/notifications";
+import { nextOccurrence, type Recurrence } from "@/lib/recurrence";
 
 export async function createTask(input: {
   listId: string;
@@ -64,6 +65,7 @@ export type TaskPatch = {
   startDate?: string | null;
   dueDate?: string | null;
   timeEstimate?: number | null;
+  recurrence?: string | null;
   archived?: boolean;
   assigneeIds?: string[]; // full replacement set
   tagIds?: string[]; // full replacement set
@@ -83,6 +85,7 @@ export async function updateTask(taskId: string, patch: TaskPatch, actorId?: str
   if (patch.priority !== undefined) data.priority = patch.priority;
   if (patch.position !== undefined) data.position = patch.position;
   if (patch.timeEstimate !== undefined) data.timeEstimate = patch.timeEstimate;
+  if (patch.recurrence !== undefined) data.recurrence = patch.recurrence || null;
   if (patch.archived !== undefined) data.archived = patch.archived;
   if (patch.startDate !== undefined)
     data.startDate = patch.startDate ? new Date(patch.startDate) : null;
@@ -91,10 +94,12 @@ export async function updateTask(taskId: string, patch: TaskPatch, actorId?: str
 
   // status change → set completedAt + log
   let statusChanged: { fromId: string; toId: string } | null = null;
+  let becameDone = false;
   if (patch.statusId !== undefined && patch.statusId !== existing.statusId) {
     data.statusId = patch.statusId;
     const newStatus = await prisma.status.findUnique({ where: { id: patch.statusId } });
-    data.completedAt = newStatus?.type === "DONE" ? new Date() : null;
+    becameDone = newStatus?.type === "DONE";
+    data.completedAt = becameDone ? new Date() : null;
     statusChanged = { fromId: existing.statusId, toId: patch.statusId };
   }
 
@@ -153,6 +158,11 @@ export async function updateTask(taskId: string, patch: TaskPatch, actorId?: str
     });
   }
 
+  // completing a recurring task spawns the next occurrence
+  if (becameDone && existing.recurrence) {
+    await spawnNextOccurrence(existing, actorId);
+  }
+
   publish({ type: "list", listId: existing.listId });
 
   if (addedAssignees.length && actorId) {
@@ -165,4 +175,58 @@ export async function updateTask(taskId: string, patch: TaskPatch, actorId?: str
     });
   }
   return task;
+}
+
+type RecurringSource = {
+  listId: string;
+  parentId: string | null;
+  name: string;
+  description: string | null;
+  priority: Priority | null;
+  startDate: Date | null;
+  dueDate: Date | null;
+  timeEstimate: number | null;
+  recurrence: string | null;
+  assignees: { userId: string }[];
+  tags: { tagId: string }[];
+};
+
+/** Clone a completed recurring task as a fresh open task with advanced dates. */
+async function spawnNextOccurrence(src: RecurringSource, actorId?: string) {
+  const rule = src.recurrence as Recurrence;
+  const base = src.dueDate ?? new Date();
+  const dueDate = nextOccurrence(base, rule);
+  const startDate = src.startDate ? nextOccurrence(src.startDate, rule) : null;
+
+  const firstStatus = await prisma.status.findFirst({
+    where: { listId: src.listId },
+    orderBy: { position: "asc" },
+  });
+  if (!firstStatus) return;
+
+  const last = await prisma.task.findFirst({
+    where: { listId: src.listId, parentId: src.parentId ?? null },
+    orderBy: { position: "desc" },
+  });
+
+  await prisma.task.create({
+    data: {
+      listId: src.listId,
+      statusId: firstStatus.id,
+      parentId: src.parentId,
+      name: src.name,
+      description: src.description,
+      priority: src.priority,
+      position: (last?.position ?? 0) + 1000,
+      startDate,
+      dueDate,
+      timeEstimate: src.timeEstimate,
+      recurrence: src.recurrence,
+      createdById: actorId,
+      assignees: src.assignees.length
+        ? { create: src.assignees.map((a) => ({ userId: a.userId })) }
+        : undefined,
+      tags: src.tags.length ? { create: src.tags.map((t) => ({ tagId: t.tagId })) } : undefined,
+    },
+  });
 }

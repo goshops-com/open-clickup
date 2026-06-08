@@ -18,6 +18,7 @@ const patchSchema = z.object({
   startDate: z.string().datetime().nullish(),
   dueDate: z.string().datetime().nullish(),
   timeEstimate: z.number().int().nullish(),
+  recurrence: z.enum(["DAILY", "WEEKDAYS", "WEEKLY", "BIWEEKLY", "MONTHLY"]).nullish(),
   archived: z.boolean().optional(),
   assigneeIds: z.array(z.string()).optional(),
   tagIds: z.array(z.string()).optional(),

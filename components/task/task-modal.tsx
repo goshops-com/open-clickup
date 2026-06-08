@@ -12,6 +12,7 @@ import {
   Flag,
   Tag as TagIcon,
   Eye,
+  Repeat,
   Plus,
 } from "lucide-react";
 import { apiGet, apiSend } from "@/lib/api";
@@ -22,6 +23,7 @@ import { StatusControl, StatusCircle } from "@/components/menus/status-control";
 import { PriorityControl } from "@/components/menus/priority-control";
 import { AssigneeControl } from "@/components/menus/assignee-control";
 import { DateControl } from "@/components/menus/date-control";
+import { RecurrenceControl } from "@/components/menus/recurrence-control";
 import { CustomFieldControl } from "@/components/views/custom-field-control";
 import { Avatar } from "@/components/ui/avatar";
 import { TagControl } from "@/components/menus/tag-control";
@@ -245,6 +247,13 @@ export function TaskModal({
                     <PriorityControl
                       value={task.priority}
                       onChange={(p: Priority | null) => update.mutate({ priority: p })}
+                    />
+                  </DetailRow>
+
+                  <DetailRow icon={<Repeat className="h-4 w-4" />} label="Recurring">
+                    <RecurrenceControl
+                      value={task.recurrence}
+                      onChange={(recurrence) => update.mutate({ recurrence })}
                     />
                   </DetailRow>
 
