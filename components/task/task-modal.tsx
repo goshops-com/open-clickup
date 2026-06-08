@@ -14,6 +14,8 @@ import {
   Eye,
   Repeat,
   Plus,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import { apiGet, apiSend } from "@/lib/api";
 import type { TaskDetail } from "@/lib/queries";
@@ -192,24 +194,13 @@ export function TaskModal({
                     <h3 className="mb-3 text-[13px] font-semibold text-cu-text-secondary">Activity</h3>
                     <div className="space-y-4">
                       {task.comments.map((c) => (
-                        <div key={c.id} className="group flex gap-2.5">
-                          <Avatar user={c.user} size="lg" />
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-baseline gap-2">
-                              <span className="text-[13px] font-semibold">{c.user.name}</span>
-                              <span className="text-[11px] text-cu-text-tertiary">
-                                {format(new Date(c.createdAt), "MMM d, h:mm a")}
-                              </span>
-                            </div>
-                            <RichText html={c.body} className="mt-0.5" />
-                            <CommentReactions
-                              commentId={c.id}
-                              reactions={c.reactions}
-                              currentUserId={currentUser.id}
-                              onChange={invalidate}
-                            />
-                          </div>
-                        </div>
+                        <CommentItem
+                          key={c.id}
+                          comment={c}
+                          currentUserId={currentUser.id}
+                          mentions={mentions}
+                          onChange={invalidate}
+                        />
                       ))}
                       {task.comments.length === 0 && (
                         <p className="text-[13px] text-cu-text-tertiary">No comments yet.</p>
@@ -343,6 +334,98 @@ function SubtaskComposer({ onSubmit }: { onSubmit: (name: string) => void }) {
         placeholder="Add a subtask"
         className="flex-1 bg-transparent text-[13px] outline-none placeholder:text-cu-text-tertiary"
       />
+    </div>
+  );
+}
+
+function CommentItem({
+  comment,
+  currentUserId,
+  mentions,
+  onChange,
+}: {
+  comment: TaskDetail["comments"][number];
+  currentUserId: string;
+  mentions: { id: string; label: string }[];
+  onChange: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [html, setHtml] = useState(comment.body);
+  const isOwn = comment.user.id === currentUserId;
+
+  const save = useMutation({
+    mutationFn: (body: string) => apiSend(`/api/comments/${comment.id}`, "PATCH", { body }),
+    onSuccess: () => {
+      setEditing(false);
+      onChange();
+    },
+  });
+  const del = useMutation({
+    mutationFn: () => apiSend(`/api/comments/${comment.id}`, "DELETE"),
+    onSuccess: onChange,
+  });
+
+  return (
+    <div className="group flex gap-2.5">
+      <Avatar user={comment.user} size="lg" />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-baseline gap-2">
+          <span className="text-[13px] font-semibold">{comment.user.name}</span>
+          <span className="text-[11px] text-cu-text-tertiary">
+            {format(new Date(comment.createdAt), "MMM d, h:mm a")}
+          </span>
+          {isOwn && !editing && (
+            <span className="ml-auto flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+              <button
+                onClick={() => {
+                  setHtml(comment.body);
+                  setEditing(true);
+                }}
+                aria-label="Edit comment"
+                className="rounded p-1 text-cu-text-tertiary hover:bg-cu-hover hover:text-cu-text"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={() => del.mutate()}
+                aria-label="Delete comment"
+                className="rounded p-1 text-cu-text-tertiary hover:bg-cu-hover hover:text-cu-urgent"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </span>
+          )}
+        </div>
+        {editing ? (
+          <div className="mt-1">
+            <RichEditor content={comment.body} mentions={mentions} onChange={setHtml} />
+            <div className="mt-1.5 flex gap-2">
+              <button
+                onClick={() => html && html !== "<p></p>" && save.mutate(html)}
+                className="rounded bg-cu-purple px-2.5 py-1 text-[12px] font-medium text-white hover:bg-cu-purple-dark"
+              >
+                Save
+              </button>
+              <button
+                onClick={() => setEditing(false)}
+                className="rounded px-2.5 py-1 text-[12px] text-cu-text-secondary hover:bg-cu-hover"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <RichText html={comment.body} className="mt-0.5" />
+            <CommentReactions
+              commentId={comment.id}
+              reactions={comment.reactions}
+              currentUserId={currentUserId}
+              onChange={onChange}
+            />
+          </>
+        )}
+      </div>
     </div>
   );
 }
