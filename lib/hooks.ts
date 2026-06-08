@@ -254,6 +254,17 @@ export function useCreateTask(listId: string | undefined) {
   });
 }
 
+export function useDuplicateTask(listId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (taskId: string) =>
+      apiSend<TaskWithRelations>(`/api/tasks/${taskId}/duplicate`, "POST"),
+    onSettled: () => {
+      if (listId) qc.invalidateQueries({ queryKey: ["list", listId] });
+    },
+  });
+}
+
 export function useBulk(listId: string | undefined) {
   const qc = useQueryClient();
   return useMutation({

@@ -111,7 +111,7 @@ export function TaskModal({
                 />
                 <span className="text-[13px] text-cu-text-tertiary">in {task.list.name}</span>
                 <div className="ml-auto flex items-center gap-1">
-                  <TaskMenu taskId={taskId} defaultName={task.name} />
+                  <TaskMenu taskId={taskId} defaultName={task.name} listId={listId} onOpenTask={onOpenTask} />
                   <button aria-label="Expand" className="rounded p-1.5 text-cu-text-tertiary hover:bg-cu-hover">
                     <Expand className="h-4 w-4" />
                   </button>

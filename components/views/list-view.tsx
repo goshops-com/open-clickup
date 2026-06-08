@@ -11,6 +11,7 @@ import {
   Trash2,
   Pencil,
   Maximize2,
+  Copy,
   GripVertical,
 } from "lucide-react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
@@ -28,7 +29,7 @@ import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } 
 import { CSS } from "@dnd-kit/utilities";
 import { cn, midpoint } from "@/lib/utils";
 import type { ListData, TaskWithRelations, StatusModel, CustomFieldWithOptions } from "@/lib/queries";
-import { useUpdateTask, useCreateTask, useSetFieldValue, useDeleteTask, useBulk } from "@/lib/hooks";
+import { useUpdateTask, useCreateTask, useSetFieldValue, useDeleteTask, useDuplicateTask, useBulk } from "@/lib/hooks";
 import { useWorkspace } from "@/components/workspace-context";
 import { groupTasks, type TaskGroup } from "@/lib/grouping";
 import type { GroupBy } from "@/lib/view-state";
@@ -404,6 +405,7 @@ function TaskRow({
   const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const setField = useSetFieldValue(task.listId);
   const del = useDeleteTask(task.listId);
+  const duplicate = useDuplicateTask(task.listId);
   const hasSubtasks = task.subtasks.length > 0;
 
   // single click on the name opens the task; double click renames it
@@ -536,6 +538,7 @@ function TaskRow({
               <DropdownMenu.Content sideOffset={4} align="end" className="z-50 min-w-[150px] rounded-lg border border-cu-border bg-cu-panel p-1 shadow-lg">
                 <RowMenuItem icon={<Maximize2 className="h-4 w-4" />} label="Open" onSelect={() => onOpenTask(task.id)} />
                 <RowMenuItem icon={<Pencil className="h-4 w-4" />} label="Rename" onSelect={() => setRenaming(true)} />
+                <RowMenuItem icon={<Copy className="h-4 w-4" />} label="Duplicate" onSelect={() => duplicate.mutate(task.id)} />
                 <RowMenuItem icon={<Trash2 className="h-4 w-4" />} label="Delete" danger onSelect={() => del.mutate(task.id)} />
               </DropdownMenu.Content>
             </DropdownMenu.Portal>

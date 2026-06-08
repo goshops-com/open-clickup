@@ -3,14 +3,25 @@
 import { useState } from "react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import * as Dialog from "@radix-ui/react-dialog";
-import { Ellipsis, BookmarkPlus, Check } from "lucide-react";
-import { useSaveTemplate } from "@/lib/hooks";
+import { Ellipsis, BookmarkPlus, Check, Copy } from "lucide-react";
+import { useSaveTemplate, useDuplicateTask } from "@/lib/hooks";
 
-export function TaskMenu({ taskId, defaultName }: { taskId: string; defaultName: string }) {
+export function TaskMenu({
+  taskId,
+  defaultName,
+  listId,
+  onOpenTask,
+}: {
+  taskId: string;
+  defaultName: string;
+  listId: string;
+  onOpenTask?: (id: string) => void;
+}) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(defaultName);
   const [saved, setSaved] = useState(false);
   const save = useSaveTemplate();
+  const duplicate = useDuplicateTask(listId);
 
   function submit() {
     if (!name.trim()) return;
@@ -42,6 +53,14 @@ export function TaskMenu({ taskId, defaultName }: { taskId: string; defaultName:
             align="end"
             className="z-50 min-w-[180px] rounded-lg border border-cu-border bg-cu-panel p-1 shadow-lg"
           >
+            <DropdownMenu.Item
+              onSelect={() =>
+                duplicate.mutate(taskId, { onSuccess: (copy) => onOpenTask?.(copy.id) })
+              }
+              className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-[13px] outline-none hover:bg-cu-hover focus:bg-cu-hover"
+            >
+              <Copy className="h-4 w-4" /> Duplicate task
+            </DropdownMenu.Item>
             <DropdownMenu.Item
               onSelect={() => {
                 setName(defaultName);
