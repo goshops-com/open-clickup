@@ -98,9 +98,7 @@ export function TaskModal({
           <Dialog.Title className="sr-only">Task details</Dialog.Title>
 
           {isLoading || !task ? (
-            <div className="flex flex-1 items-center justify-center text-sm text-cu-text-secondary">
-              Loading…
-            </div>
+            <TaskModalSkeleton />
           ) : (
             <>
               {/* header */}
@@ -298,6 +296,38 @@ export function TaskModal({
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
+  );
+}
+
+function TaskModalSkeleton() {
+  return (
+    <>
+      {/* header */}
+      <div className="flex items-center gap-2 border-b border-cu-border px-4 py-2.5">
+        <div className="h-6 w-20 animate-pulse rounded bg-cu-hover-strong" />
+        <div className="h-4 w-24 animate-pulse rounded bg-cu-hover" />
+      </div>
+      <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+        {/* main */}
+        <div className="flex min-w-0 flex-1 flex-col gap-4 overflow-y-auto p-4 md:p-6">
+          <div className="h-8 w-2/3 animate-pulse rounded bg-cu-hover-strong" />
+          <div className="h-24 w-full animate-pulse rounded-lg bg-cu-hover" />
+          <div className="h-5 w-28 animate-pulse rounded bg-cu-hover" />
+          <div className="h-20 w-full animate-pulse rounded-lg bg-cu-hover" />
+          <div className="h-5 w-24 animate-pulse rounded bg-cu-hover" />
+          <div className="h-16 w-full animate-pulse rounded-lg bg-cu-hover" />
+        </div>
+        {/* sidebar */}
+        <aside className="w-full shrink-0 space-y-3 border-t border-cu-border bg-cu-sidebar/40 p-4 md:w-[320px] md:border-l md:border-t-0">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <div className="h-4 w-24 animate-pulse rounded bg-cu-hover" />
+              <div className="h-4 w-16 animate-pulse rounded bg-cu-hover-strong" />
+            </div>
+          ))}
+        </aside>
+      </div>
+    </>
   );
 }
 
