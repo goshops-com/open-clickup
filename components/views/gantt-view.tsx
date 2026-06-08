@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   eachDayOfInterval,
   differenceInCalendarDays,
@@ -12,8 +12,16 @@ import {
 } from "date-fns";
 import { cn } from "@/lib/utils";
 import type { ListData, TaskWithRelations } from "@/lib/queries";
+import type { TaskPatch } from "@/lib/tasks";
+import { useUpdateTask } from "@/lib/hooks";
 import { StatusCircle } from "@/components/menus/status-control";
 import { AvatarStack } from "@/components/ui/avatar";
+
+function noonISO(d: Date): string {
+  const x = new Date(d);
+  x.setHours(12, 0, 0, 0);
+  return x.toISOString();
+}
 
 const DAY_W = 34;
 const NAME_W = 260;
@@ -47,6 +55,8 @@ export function GanttView({
 }) {
   const tasks = data.tasks;
   const dependencies = data.dependencies;
+  const update = useUpdateTask(data.list.id);
+  const reschedule = (taskId: string, patch: TaskPatch) => update.mutate({ taskId, patch });
 
   const { start, days } = useMemo(() => {
     const dates: Date[] = [];
@@ -142,7 +152,14 @@ export function GanttView({
         {/* rows */}
         <div className="relative">
           {tasks.map((task) => (
-            <GanttRow key={task.id} task={task} start={start} days={days} onOpenTask={onOpenTask} />
+            <GanttRow
+              key={task.id}
+              task={task}
+              start={start}
+              days={days}
+              onOpenTask={onOpenTask}
+              onReschedule={reschedule}
+            />
           ))}
           {arrows.length > 0 && (
             <svg
@@ -183,22 +200,83 @@ export function GanttView({
   );
 }
 
+type DragMode = "move" | "resize-start" | "resize-end";
+
 function GanttRow({
   task,
   start,
   days,
   onOpenTask,
+  onReschedule,
 }: {
   task: TaskWithRelations;
   start: Date;
   days: Date[];
   onOpenTask: (id: string) => void;
+  onReschedule: (taskId: string, patch: TaskPatch) => void;
 }) {
   const s = task.startDate ? startOfDay(new Date(task.startDate)) : task.dueDate ? startOfDay(new Date(task.dueDate)) : null;
   const e = task.dueDate ? startOfDay(new Date(task.dueDate)) : s;
 
-  const offset = s ? differenceInCalendarDays(s, start) : 0;
-  const span = s && e ? differenceInCalendarDays(e, s) + 1 : 0;
+  const baseOffset = s ? differenceInCalendarDays(s, start) : 0;
+  const baseSpan = s && e ? differenceInCalendarDays(e, s) + 1 : 0;
+
+  const [drag, setDrag] = useState<{ mode: DragMode; dd: number } | null>(null);
+  const suppressClick = useRef(false);
+
+  // live preview geometry while dragging
+  let offset = baseOffset;
+  let span = baseSpan;
+  if (drag) {
+    if (drag.mode === "move") offset = baseOffset + drag.dd;
+    else if (drag.mode === "resize-end") span = Math.max(1, baseSpan + drag.dd);
+    else {
+      offset = baseOffset + Math.min(drag.dd, baseSpan - 1);
+      span = Math.max(1, baseSpan - drag.dd);
+    }
+  }
+
+  function beginDrag(mode: DragMode, ev: React.PointerEvent) {
+    if (!s || !e) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    const startX = ev.clientX;
+    let moved = false;
+    const onMove = (m: PointerEvent) => {
+      const dd = Math.round((m.clientX - startX) / DAY_W);
+      if (Math.abs(m.clientX - startX) > 3) moved = true;
+      setDrag({ mode, dd });
+    };
+    const onUp = (u: PointerEvent) => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      const dd = Math.round((u.clientX - startX) / DAY_W);
+      setDrag(null);
+      if (!moved || dd === 0) return;
+      suppressClick.current = true;
+      setTimeout(() => (suppressClick.current = false), 0);
+      commit(mode, dd);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  }
+
+  function commit(mode: DragMode, dd: number) {
+    if (!s || !e) return;
+    const patch: TaskPatch = {};
+    if (mode === "move") {
+      if (task.startDate) patch.startDate = noonISO(addDays(s, dd));
+      if (task.dueDate) patch.dueDate = noonISO(addDays(e, dd));
+      if (!task.startDate && !task.dueDate) patch.dueDate = noonISO(addDays(e, dd));
+    } else if (mode === "resize-end") {
+      const newEnd = addDays(e, dd);
+      patch.dueDate = noonISO(newEnd < s ? s : newEnd);
+    } else {
+      const newStart = addDays(s, dd);
+      patch.startDate = noonISO(newStart > e ? e : newStart);
+    }
+    onReschedule(task.id, patch);
+  }
 
   return (
     <div className="flex border-b border-cu-border/60 hover:bg-cu-hover/40">
@@ -223,22 +301,39 @@ function GanttRow({
           ))}
         </div>
         {span > 0 && (
-          <button
-            onClick={() => onOpenTask(task.id)}
-            className="absolute top-1/2 flex h-5 -translate-y-1/2 items-center gap-1 rounded-full px-2 text-[11px] font-medium text-white shadow-sm hover:brightness-95"
+          <div
+            className={cn(
+              "group/bar absolute top-1/2 flex h-5 -translate-y-1/2 cursor-grab items-center gap-1 rounded-full px-2 text-[11px] font-medium text-white shadow-sm hover:brightness-95 active:cursor-grabbing",
+              drag && "z-10 ring-2 ring-white/60",
+            )}
             style={{
               left: offset * DAY_W + 3,
               width: span * DAY_W - 6,
               backgroundColor: task.status.color,
             }}
+            onPointerDown={(ev) => beginDrag("move", ev)}
+            onClick={() => {
+              if (suppressClick.current) return;
+              onOpenTask(task.id);
+            }}
           >
+            {/* left resize handle */}
+            <span
+              onPointerDown={(ev) => beginDrag("resize-start", ev)}
+              className="absolute left-0 top-0 h-full w-2 cursor-ew-resize rounded-l-full opacity-0 group-hover/bar:opacity-100"
+            />
             <span className="truncate">{task.name}</span>
             {task.assignees.length > 0 && (
               <span className="ml-auto shrink-0">
                 <AvatarStack users={task.assignees.map((a) => a.user)} size="xs" max={2} />
               </span>
             )}
-          </button>
+            {/* right resize handle */}
+            <span
+              onPointerDown={(ev) => beginDrag("resize-end", ev)}
+              className="absolute right-0 top-0 h-full w-2 cursor-ew-resize rounded-r-full opacity-0 group-hover/bar:opacity-100"
+            />
+          </div>
         )}
       </div>
     </div>
