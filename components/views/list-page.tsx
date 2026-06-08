@@ -13,8 +13,11 @@ import {
   Users,
   Ellipsis,
   Star,
+  ClipboardList,
+  SearchX,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { EmptyState } from "@/components/ui/empty-state";
 import { useList, useCreateTask } from "@/lib/hooks";
 import { apiSend } from "@/lib/api";
 import { ViewType } from "@/lib/enums";
@@ -218,11 +221,37 @@ export function ListPage({ listId }: { listId: string }) {
       </div>
 
       {/* active view */}
-      {activeView?.type === "LIST" && <ListView data={shownData!} onOpenTask={setOpenTaskId} groupBy={vs.groupBy} />}
-      {activeView?.type === "BOARD" && <BoardView data={shownData!} onOpenTask={setOpenTaskId} groupBy={vs.groupBy} />}
-      {activeView?.type === "CALENDAR" && <CalendarView data={shownData!} onOpenTask={setOpenTaskId} />}
-      {activeView?.type === "GANTT" && <GanttView data={shownData!} onOpenTask={setOpenTaskId} />}
-      {activeView?.type === "TABLE" && <TableView data={shownData!} onOpenTask={setOpenTaskId} groupBy={vs.groupBy} />}
+      {shownData && shownData.tasks.length === 0 ? (
+        data.tasks.length === 0 ? (
+          <EmptyState
+            icon={<ClipboardList className="h-6 w-6" />}
+            title="This list is empty"
+            subtitle="Create your first task to get started."
+            action={
+              <button
+                onClick={addTask}
+                className="flex items-center gap-1 rounded-md bg-cu-purple px-3 py-1.5 text-[13px] font-medium text-white hover:bg-cu-purple-dark"
+              >
+                <Plus className="h-4 w-4" /> Add Task
+              </button>
+            }
+          />
+        ) : (
+          <EmptyState
+            icon={<SearchX className="h-6 w-6" />}
+            title="No tasks match your filters"
+            subtitle="Try clearing or adjusting the active filters."
+          />
+        )
+      ) : (
+        <>
+          {activeView?.type === "LIST" && <ListView data={shownData!} onOpenTask={setOpenTaskId} groupBy={vs.groupBy} />}
+          {activeView?.type === "BOARD" && <BoardView data={shownData!} onOpenTask={setOpenTaskId} groupBy={vs.groupBy} />}
+          {activeView?.type === "CALENDAR" && <CalendarView data={shownData!} onOpenTask={setOpenTaskId} />}
+          {activeView?.type === "GANTT" && <GanttView data={shownData!} onOpenTask={setOpenTaskId} />}
+          {activeView?.type === "TABLE" && <TableView data={shownData!} onOpenTask={setOpenTaskId} groupBy={vs.groupBy} />}
+        </>
+      )}
 
       {openTaskId && (
         <TaskModal taskId={openTaskId} listId={listId} onClose={closeTask} />
