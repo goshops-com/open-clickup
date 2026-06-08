@@ -17,6 +17,7 @@ import {
   Pencil,
   Trash2,
   Reply,
+  Check,
 } from "lucide-react";
 import { apiGet, apiSend } from "@/lib/api";
 import type { TaskDetail } from "@/lib/queries";
@@ -501,9 +502,13 @@ function CommentItem({
       onChange();
     },
   });
+  const resolve = useMutation({
+    mutationFn: (resolved: boolean) => apiSend(`/api/comments/${comment.id}`, "PATCH", { resolved }),
+    onSuccess: onChange,
+  });
 
   return (
-    <div className="group flex gap-2.5">
+    <div className={`group flex gap-2.5 ${comment.resolved ? "opacity-60" : ""}`}>
       <Avatar user={comment.user} size="lg" />
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-2">
@@ -511,6 +516,11 @@ function CommentItem({
           <span className="text-[11px] text-cu-text-tertiary">
             {format(new Date(comment.createdAt), "MMM d, h:mm a")}
           </span>
+          {comment.resolved && (
+            <span className="flex items-center gap-0.5 rounded-full bg-[#6bc950]/20 px-1.5 py-px text-[10px] font-semibold text-[#6bc950]">
+              <Check className="h-3 w-3" /> Resolved
+            </span>
+          )}
           {isOwn && !editing && (
             <span className="ml-auto flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
               <button
@@ -567,6 +577,14 @@ function CommentItem({
                   className="flex items-center gap-1 rounded px-1 py-0.5 text-[11px] text-cu-text-tertiary hover:text-cu-purple"
                 >
                   <Reply className="h-3 w-3" /> Reply
+                </button>
+              )}
+              {taskId && (
+                <button
+                  onClick={() => resolve.mutate(!comment.resolved)}
+                  className="flex items-center gap-1 rounded px-1 py-0.5 text-[11px] text-cu-text-tertiary hover:text-[#6bc950]"
+                >
+                  <Check className="h-3 w-3" /> {comment.resolved ? "Reopen" : "Resolve"}
                 </button>
               )}
             </div>
