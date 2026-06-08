@@ -16,6 +16,7 @@ import {
   Plus,
   Pencil,
   Trash2,
+  Reply,
 } from "lucide-react";
 import { apiGet, apiSend } from "@/lib/api";
 import type { TaskDetail } from "@/lib/queries";
@@ -193,6 +194,7 @@ export function TaskModal({
                   <section className="mt-8">
                     <h3 className="mb-3 text-[13px] font-semibold text-cu-text-secondary">Activity</h3>
                     <ActivityFeed
+                      taskId={taskId}
                       comments={task.comments}
                       activities={task.activities}
                       statuses={task.list.statuses}
@@ -394,6 +396,7 @@ function ActivityLine({
 }
 
 function ActivityFeed({
+  taskId,
   comments,
   activities,
   statuses,
@@ -402,6 +405,7 @@ function ActivityFeed({
   mentions,
   onChange,
 }: {
+  taskId: string;
   comments: TaskDetail["comments"];
   activities: ActivityRecord[];
   statuses: { id: string; name: string }[];
@@ -412,9 +416,21 @@ function ActivityFeed({
 }) {
   const statusName = (id: string) => statuses.find((s) => s.id === id)?.name;
   const memberName = (id: string) => members.find((m) => m.id === id)?.name ?? "someone";
-  // merge comments + non-comment activities into one chronological timeline
+
+  // group replies under their parent; only top-level comments enter the timeline
+  const repliesByParent = new Map<string, TaskDetail["comments"]>();
+  for (const c of comments) {
+    if (c.parentId) {
+      const arr = repliesByParent.get(c.parentId) ?? [];
+      arr.push(c);
+      repliesByParent.set(c.parentId, arr);
+    }
+  }
+  const topLevel = comments.filter((c) => !c.parentId);
+
+  // merge top-level comments + non-comment activities into one chronological timeline
   const feed = [
-    ...comments.map((c) => ({ kind: "comment" as const, at: +new Date(c.createdAt), c })),
+    ...topLevel.map((c) => ({ kind: "comment" as const, at: +new Date(c.createdAt), c })),
     ...activities
       .filter((a) => a.type !== "commented")
       .map((a) => ({ kind: "activity" as const, at: +new Date(a.createdAt), a })),
@@ -431,6 +447,8 @@ function ActivityFeed({
           <CommentItem
             key={`c-${item.c.id}`}
             comment={item.c}
+            taskId={taskId}
+            replies={repliesByParent.get(item.c.id) ?? []}
             currentUserId={currentUserId}
             mentions={mentions}
             onChange={onChange}
@@ -445,17 +463,23 @@ function ActivityFeed({
 
 function CommentItem({
   comment,
+  taskId,
+  replies = [],
   currentUserId,
   mentions,
   onChange,
 }: {
   comment: TaskDetail["comments"][number];
+  taskId?: string;
+  replies?: TaskDetail["comments"];
   currentUserId: string;
   mentions: { id: string; label: string }[];
   onChange: () => void;
 }) {
   const [editing, setEditing] = useState(false);
+  const [replying, setReplying] = useState(false);
   const [html, setHtml] = useState(comment.body);
+  const [replyHtml, setReplyHtml] = useState("");
   const isOwn = comment.user.id === currentUserId;
 
   const save = useMutation({
@@ -468,6 +492,14 @@ function CommentItem({
   const del = useMutation({
     mutationFn: () => apiSend(`/api/comments/${comment.id}`, "DELETE"),
     onSuccess: onChange,
+  });
+  const reply = useMutation({
+    mutationFn: (body: string) => apiSend(`/api/tasks/${taskId}/comments`, "POST", { body, parentId: comment.id }),
+    onSuccess: () => {
+      setReplying(false);
+      setReplyHtml("");
+      onChange();
+    },
   });
 
   return (
@@ -522,12 +554,57 @@ function CommentItem({
         ) : (
           <>
             <RichText html={comment.body} className="mt-0.5" />
-            <CommentReactions
-              commentId={comment.id}
-              reactions={comment.reactions}
-              currentUserId={currentUserId}
-              onChange={onChange}
-            />
+            <div className="flex items-center gap-2">
+              <CommentReactions
+                commentId={comment.id}
+                reactions={comment.reactions}
+                currentUserId={currentUserId}
+                onChange={onChange}
+              />
+              {taskId && (
+                <button
+                  onClick={() => setReplying((r) => !r)}
+                  className="flex items-center gap-1 rounded px-1 py-0.5 text-[11px] text-cu-text-tertiary hover:text-cu-purple"
+                >
+                  <Reply className="h-3 w-3" /> Reply
+                </button>
+              )}
+            </div>
+
+            {replies.length > 0 && (
+              <div className="mt-2 space-y-3 border-l-2 border-cu-border pl-3">
+                {replies.map((r) => (
+                  <CommentItem
+                    key={r.id}
+                    comment={r}
+                    currentUserId={currentUserId}
+                    mentions={mentions}
+                    onChange={onChange}
+                  />
+                ))}
+              </div>
+            )}
+
+            {replying && taskId && (
+              <div className="mt-2 border-l-2 border-cu-border pl-3">
+                <RichEditor content="" placeholder="Write a reply…" mentions={mentions} onChange={setReplyHtml} />
+                <div className="mt-1.5 flex gap-2">
+                  <button
+                    onClick={() => replyHtml && replyHtml !== "<p></p>" && reply.mutate(replyHtml)}
+                    disabled={reply.isPending}
+                    className="rounded bg-cu-purple px-2.5 py-1 text-[12px] font-medium text-white hover:bg-cu-purple-dark disabled:opacity-40"
+                  >
+                    Reply
+                  </button>
+                  <button
+                    onClick={() => setReplying(false)}
+                    className="rounded px-2.5 py-1 text-[12px] text-cu-text-secondary hover:bg-cu-hover"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>
