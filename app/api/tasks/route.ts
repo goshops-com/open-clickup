@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createTask } from "@/lib/tasks";
-import { requireUser } from "@/lib/auth";
+import { requireRole } from "@/lib/permissions";
 import { readJson, route } from "@/lib/api-helpers";
 
 const schema = z.object({
@@ -15,7 +15,7 @@ const schema = z.object({
 
 export const POST = route(async (req) => {
   const body = await readJson(req, schema);
-  const user = await requireUser();
+  const { user } = await requireRole("MEMBER");
   const task = await createTask({
     listId: body.listId,
     name: body.name,

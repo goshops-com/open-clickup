@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { Priority } from "@/lib/generated/prisma/client";
+import { requireRole } from "@/lib/permissions";
 import { readJson, route } from "@/lib/api-helpers";
 import { publish } from "@/lib/events";
 
@@ -23,6 +24,7 @@ const schema = z.object({
 });
 
 export const POST = route(async (req) => {
+  await requireRole("MEMBER");
   const { ids, patch, delete: del } = await readJson(req, schema);
 
   if (del) {

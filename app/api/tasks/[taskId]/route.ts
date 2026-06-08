@@ -3,7 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { updateTask } from "@/lib/tasks";
 import { getTaskDetail } from "@/lib/queries";
-import { requireUser } from "@/lib/auth";
+import { requireRole } from "@/lib/permissions";
 import { readJson, route, ApiError } from "@/lib/api-helpers";
 import { publish } from "@/lib/events";
 
@@ -35,13 +35,14 @@ export const GET = route(async (_req, { params }: Ctx) => {
 export const PATCH = route(async (req, { params }: Ctx) => {
   const { taskId } = await params;
   const patch = await readJson(req, patchSchema);
-  const user = await requireUser();
+  const { user } = await requireRole("MEMBER");
   const task = await updateTask(taskId, patch, user.id);
   return NextResponse.json(task);
 });
 
 export const DELETE = route(async (_req, { params }: Ctx) => {
   const { taskId } = await params;
+  await requireRole("MEMBER");
   const task = await prisma.task.findUnique({ where: { id: taskId }, select: { listId: true } });
   await prisma.task.delete({ where: { id: taskId } });
   if (task) publish({ type: "list", listId: task.listId });
