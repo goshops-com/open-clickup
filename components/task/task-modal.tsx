@@ -366,6 +366,8 @@ function activityText(
       return `unassigned ${names(d.userIds)}`;
     case "attachment_added":
       return d.name ? `attached ${String(d.name)}` : "added an attachment";
+    case "moved":
+      return d.toList ? `moved this task to ${String(d.toList)}` : "moved this task";
     default:
       return a.type.replace(/_/g, " ");
   }

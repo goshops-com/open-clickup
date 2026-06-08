@@ -1,10 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useMutation } from "@tanstack/react-query";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import * as Dialog from "@radix-ui/react-dialog";
-import { Ellipsis, BookmarkPlus, Check, Copy } from "lucide-react";
+import { Ellipsis, BookmarkPlus, Check, Copy, FolderInput } from "lucide-react";
+import { apiSend } from "@/lib/api";
 import { useSaveTemplate, useDuplicateTask } from "@/lib/hooks";
+import { useWorkspace } from "@/components/workspace-context";
 
 export function TaskMenu({
   taskId,
@@ -22,6 +26,15 @@ export function TaskMenu({
   const [saved, setSaved] = useState(false);
   const save = useSaveTemplate();
   const duplicate = useDuplicateTask(listId);
+  const router = useRouter();
+  const { workspace } = useWorkspace();
+  const otherLists = workspace.spaces
+    .flatMap((s) => [...s.lists, ...s.folders.flatMap((f) => f.lists)])
+    .filter((l) => l.id !== listId);
+  const move = useMutation({
+    mutationFn: (toListId: string) => apiSend<{ listId: string }>(`/api/tasks/${taskId}/move`, "POST", { listId: toListId }),
+    onSuccess: (r) => router.push(`/l/${r.listId}?task=${taskId}`),
+  });
 
   function submit() {
     if (!name.trim()) return;
@@ -61,6 +74,29 @@ export function TaskMenu({
             >
               <Copy className="h-4 w-4" /> Duplicate task
             </DropdownMenu.Item>
+            {otherLists.length > 0 && (
+              <DropdownMenu.Sub>
+                <DropdownMenu.SubTrigger className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-[13px] outline-none hover:bg-cu-hover focus:bg-cu-hover data-[state=open]:bg-cu-hover">
+                  <FolderInput className="h-4 w-4" /> Move to list
+                </DropdownMenu.SubTrigger>
+                <DropdownMenu.Portal>
+                  <DropdownMenu.SubContent
+                    sideOffset={4}
+                    className="z-50 max-h-[320px] min-w-[200px] overflow-y-auto rounded-lg border border-cu-border bg-cu-panel p-1 shadow-lg"
+                  >
+                    {otherLists.map((l) => (
+                      <DropdownMenu.Item
+                        key={l.id}
+                        onSelect={() => move.mutate(l.id)}
+                        className="cursor-pointer truncate rounded px-2 py-1.5 text-[13px] outline-none hover:bg-cu-hover focus:bg-cu-hover"
+                      >
+                        {l.name}
+                      </DropdownMenu.Item>
+                    ))}
+                  </DropdownMenu.SubContent>
+                </DropdownMenu.Portal>
+              </DropdownMenu.Sub>
+            )}
             <DropdownMenu.Item
               onSelect={() => {
                 setName(defaultName);
