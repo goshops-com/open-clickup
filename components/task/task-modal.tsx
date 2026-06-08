@@ -309,7 +309,7 @@ function TitleField({ value, onSave }: { value: string; onSave: (v: string) => v
       onChange={(e) => setV(e.target.value)}
       onBlur={() => v.trim() && v !== value && onSave(v.trim())}
       rows={1}
-      className="w-full resize-none text-2xl font-semibold text-cu-text outline-none placeholder:text-cu-text-tertiary"
+      className="w-full shrink-0 resize-none text-2xl font-semibold text-cu-text outline-none placeholder:text-cu-text-tertiary"
       placeholder="Task name"
     />
   );
