@@ -22,7 +22,14 @@ export const POST = route(async (req, { params }: Ctx) => {
     include: { user: { select: userSelect }, reactions: true },
   });
 
-  const task = await prisma.task.findUnique({ where: { id: taskId }, select: { listId: true } });
+  const task = await prisma.task.findUnique({
+    where: { id: taskId },
+    select: {
+      listId: true,
+      assignees: { select: { userId: true } },
+      watchers: { select: { userId: true } },
+    },
+  });
   if (task) publish({ type: "list", listId: task.listId });
   await prisma.activity.create({
     data: { taskId, userId: user.id, type: "commented", data: {} },
@@ -37,6 +44,21 @@ export const POST = route(async (req, { params }: Ctx) => {
       type: "mention",
       body: "mentioned you in a comment",
     });
+  }
+
+  // notify watchers + assignees (minus the commenter and anyone already @-mentioned)
+  if (task) {
+    const followers = [...task.assignees, ...task.watchers].map((f) => f.userId);
+    const recipients = [...new Set(followers)].filter((id) => !mentioned.includes(id));
+    if (recipients.length) {
+      await createNotifications({
+        recipientIds: recipients,
+        actorId: user.id,
+        taskId,
+        type: "comment",
+        body: "commented on a task you follow",
+      });
+    }
   }
   return NextResponse.json(comment, { status: 201 });
 });
