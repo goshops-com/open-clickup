@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { requireRole } from "@/lib/permissions";
 import { readJson, route } from "@/lib/api-helpers";
 
 type Ctx = { params: Promise<{ spaceId: string }> };
@@ -23,6 +24,7 @@ export const GET = route(async (_req, { params }: Ctx) => {
 
 export const POST = route(async (req, { params }: Ctx) => {
   const { spaceId } = await params;
+  await requireRole("MEMBER");
   const { name, color } = await readJson(req, schema);
   const count = await prisma.tag.count({ where: { spaceId } });
   const tag = await prisma.tag.upsert({

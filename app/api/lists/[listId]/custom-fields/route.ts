@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { CustomFieldType } from "@/lib/generated/prisma/client";
+import { requireRole } from "@/lib/permissions";
 import { readJson, route } from "@/lib/api-helpers";
 
 type Ctx = { params: Promise<{ listId: string }> };
@@ -18,6 +19,7 @@ const schema = z.object({
 
 export const POST = route(async (req, { params }: Ctx) => {
   const { listId } = await params;
+  await requireRole("MEMBER");
   const { name, type, options } = await readJson(req, schema);
   const last = await prisma.customField.findFirst({ where: { listId }, orderBy: { position: "desc" } });
   const needsOptions = type === "DROPDOWN" || type === "LABELS";

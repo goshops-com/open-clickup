@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { StatusType } from "@/lib/generated/prisma/client";
+import { requireRole } from "@/lib/permissions";
 import { readJson, route, ApiError } from "@/lib/api-helpers";
 
 type Ctx = { params: Promise<{ statusId: string }> };
@@ -14,6 +15,7 @@ const schema = z.object({
 
 export const PATCH = route(async (req, { params }: Ctx) => {
   const { statusId } = await params;
+  await requireRole("MEMBER");
   const body = await readJson(req, schema);
   const data: Record<string, unknown> = {};
   if (body.name !== undefined) data.name = body.name;
@@ -26,6 +28,7 @@ export const PATCH = route(async (req, { params }: Ctx) => {
 
 export const DELETE = route(async (_req, { params }: Ctx) => {
   const { statusId } = await params;
+  await requireRole("MEMBER");
   const status = await prisma.status.findUnique({ where: { id: statusId } });
   if (!status) throw new ApiError(404, "Status not found");
 

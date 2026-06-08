@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { requireRole } from "@/lib/permissions";
 import { readJson, route } from "@/lib/api-helpers";
 
 const schema = z.object({
@@ -9,6 +10,7 @@ const schema = z.object({
 });
 
 export const POST = route(async (req) => {
+  await requireRole("MEMBER");
   const { spaceId, name } = await readJson(req, schema);
   const last = await prisma.folder.findFirst({ where: { spaceId }, orderBy: { position: "desc" } });
   const folder = await prisma.folder.create({

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { StatusType } from "@/lib/generated/prisma/client";
+import { requireRole } from "@/lib/permissions";
 import { readJson, route } from "@/lib/api-helpers";
 
 type Ctx = { params: Promise<{ listId: string }> };
@@ -16,6 +17,7 @@ const reorderSchema = z.object({ ids: z.array(z.string()).min(1) });
 
 export const POST = route(async (req, { params }: Ctx) => {
   const { listId } = await params;
+  await requireRole("MEMBER");
   const { name, color, type } = await readJson(req, createSchema);
   const last = await prisma.status.findFirst({ where: { listId }, orderBy: { position: "desc" } });
   const status = await prisma.status.create({
@@ -32,6 +34,7 @@ export const POST = route(async (req, { params }: Ctx) => {
 
 export const PUT = route(async (req, { params }: Ctx) => {
   const { listId } = await params;
+  await requireRole("MEMBER");
   const { ids } = await readJson(req, reorderSchema);
   await prisma.$transaction(
     ids.map((id, i) => prisma.status.update({ where: { id }, data: { position: i } })),
