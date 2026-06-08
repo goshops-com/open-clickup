@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PanelLeft } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { PanelLeft, Menu } from "lucide-react";
 import { useBootstrap, useRealtime } from "@/lib/hooks";
 import { WorkspaceProvider } from "@/components/workspace-context";
 import { Sidebar } from "@/components/sidebar/sidebar";
@@ -19,7 +20,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const pathname = usePathname();
   useRealtime();
+
+  // close the mobile drawer whenever the route changes
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -62,18 +70,45 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <WorkspaceProvider data={data}>
       <div className="flex h-full w-full overflow-hidden">
-        {collapsed ? (
-          <button
-            onClick={() => setCollapsed(false)}
-            className="absolute left-2 top-2 z-20 rounded p-1.5 text-cu-text-secondary hover:bg-cu-hover-strong"
-            title="Open sidebar"
-          >
-            <PanelLeft className="h-4 w-4" />
-          </button>
-        ) : (
-          <Sidebar onCollapse={() => setCollapsed(true)} />
+        {/* Desktop sidebar (collapsible) */}
+        <div className="hidden md:flex">
+          {collapsed ? (
+            <button
+              onClick={() => setCollapsed(false)}
+              className="absolute left-2 top-2 z-20 rounded p-1.5 text-cu-text-secondary hover:bg-cu-hover-strong"
+              title="Open sidebar"
+            >
+              <PanelLeft className="h-4 w-4" />
+            </button>
+          ) : (
+            <Sidebar onCollapse={() => setCollapsed(true)} />
+          )}
+        </div>
+
+        {/* Mobile drawer */}
+        {mobileOpen && (
+          <>
+            <div className="fixed inset-0 z-40 bg-black/40 md:hidden" onClick={() => setMobileOpen(false)} />
+            <div className="fixed inset-y-0 left-0 z-50 md:hidden">
+              <Sidebar onCollapse={() => setMobileOpen(false)} />
+            </div>
+          </>
         )}
-        <main className="flex min-w-0 flex-1 flex-col bg-cu-bg">{children}</main>
+
+        <main className="flex min-w-0 flex-1 flex-col bg-cu-bg">
+          {/* Mobile top bar */}
+          <div className="flex items-center gap-2 border-b border-cu-border px-3 py-2 md:hidden">
+            <button
+              onClick={() => setMobileOpen(true)}
+              className="rounded p-1.5 text-cu-text-secondary hover:bg-cu-hover-strong"
+              title="Open menu"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+            <span className="text-[14px] font-semibold">Open ClickUp</span>
+          </div>
+          {children}
+        </main>
         <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
         <ShortcutsHelp open={helpOpen} onClose={() => setHelpOpen(false)} />
       </div>

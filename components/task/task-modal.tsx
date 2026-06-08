@@ -113,9 +113,9 @@ export function TaskModal({
                 </div>
               </div>
 
-              <div className="flex min-h-0 flex-1">
+              <div className="flex min-h-0 flex-1 flex-col md:flex-row">
                 {/* main */}
-                <div className="flex min-w-0 flex-1 flex-col overflow-y-auto p-6">
+                <div className="flex min-w-0 flex-1 flex-col overflow-y-auto p-4 md:p-6">
                   <TitleField
                     value={task.name}
                     onSave={(name) => update.mutate({ name })}
@@ -217,7 +217,7 @@ export function TaskModal({
                 </div>
 
                 {/* sidebar */}
-                <aside className="w-[320px] shrink-0 overflow-y-auto border-l border-cu-border bg-cu-sidebar/40 p-4">
+                <aside className="w-full shrink-0 overflow-y-auto border-t border-cu-border bg-cu-sidebar/40 p-4 md:w-[320px] md:border-l md:border-t-0">
                   <DetailRow icon={<UserGlyph />} label="Assignees">
                     <AssigneeControl
                       assignees={task.assignees.map((a) => a.user)}
