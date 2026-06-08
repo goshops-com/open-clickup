@@ -72,8 +72,24 @@ model Workspace {
   avatarUrl String?
   createdAt DateTime @default(now())
 
-  members WorkspaceMember[]
-  spaces  Space[]
+  members   WorkspaceMember[]
+  spaces    Space[]
+  templates TaskTemplate[]
+}
+
+model TaskTemplate {
+  id          String    @id @default(cuid())
+  workspaceId String
+  name        String // template name
+  taskName    String // default task title
+  description String?
+  priority    Priority?
+  checklists  Json? // [{ name, items: string[] }]
+  createdAt   DateTime  @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
 }
 
 enum MemberRole {

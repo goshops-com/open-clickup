@@ -84,6 +84,50 @@ export function useMyTasks() {
   });
 }
 
+export type TaskTemplate = {
+  id: string;
+  name: string;
+  taskName: string;
+  description: string | null;
+  priority: string | null;
+  checklists: { name: string; items: string[] }[] | null;
+};
+
+export function useTemplates() {
+  return useQuery({
+    queryKey: ["templates"],
+    queryFn: () => apiGet<TaskTemplate[]>("/api/templates"),
+  });
+}
+
+export function useSaveTemplate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { fromTaskId: string; name: string }) =>
+      apiSend<TaskTemplate>("/api/templates", "POST", v),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["templates"] }),
+  });
+}
+
+export function useDeleteTemplate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiSend(`/api/templates/${id}`, "DELETE"),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["templates"] }),
+  });
+}
+
+export function useApplyTemplate(listId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (templateId: string) =>
+      apiSend<TaskWithRelations>(`/api/lists/${listId}/apply-template`, "POST", { templateId }),
+    onSuccess: () => {
+      if (listId) qc.invalidateQueries({ queryKey: ["list", listId] });
+    },
+  });
+}
+
 export function useBootstrap() {
   return useQuery({
     queryKey: ["bootstrap"],

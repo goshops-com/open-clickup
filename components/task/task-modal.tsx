@@ -30,6 +30,7 @@ import { TagControl } from "@/components/menus/tag-control";
 import { RichEditor, RichText } from "@/components/ui/rich-editor";
 import { Checklists } from "@/components/task/checklists";
 import { CommentReactions } from "@/components/task/comment-reactions";
+import { TaskMenu } from "@/components/task/save-template";
 import { Attachments } from "@/components/task/attachments";
 import { TimeTracking } from "@/components/task/time-tracking";
 import { Dependencies } from "@/components/task/dependencies";
@@ -106,6 +107,7 @@ export function TaskModal({
                 />
                 <span className="text-[13px] text-cu-text-tertiary">in {task.list.name}</span>
                 <div className="ml-auto flex items-center gap-1">
+                  <TaskMenu taskId={taskId} defaultName={task.name} />
                   <button className="rounded p-1.5 text-cu-text-tertiary hover:bg-cu-hover">
                     <Expand className="h-4 w-4" />
                   </button>

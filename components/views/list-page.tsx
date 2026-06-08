@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
+import { TemplatePicker } from "@/components/views/template-picker";
 import { useList, useCreateTask } from "@/lib/hooks";
 import { apiSend } from "@/lib/api";
 import { ViewType } from "@/lib/enums";
@@ -66,6 +67,7 @@ export function ListPage({ listId }: { listId: string }) {
   const [activeViewId, setActiveViewId] = useState<string | null>(null);
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
   const [statusMgr, setStatusMgr] = useState(false);
+  const [templatePicker, setTemplatePicker] = useState(false);
   const [vs, setVs] = useState<ViewState>(EMPTY_VIEW_STATE);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -175,6 +177,12 @@ export function ListPage({ listId }: { listId: string }) {
               >
                 Edit statuses
               </DropdownMenu.Item>
+              <DropdownMenu.Item
+                onSelect={() => setTemplatePicker(true)}
+                className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-[13px] outline-none hover:bg-cu-hover"
+              >
+                New from template
+              </DropdownMenu.Item>
             </DropdownMenu.Content>
           </DropdownMenu.Portal>
         </DropdownMenu.Root>
@@ -258,6 +266,13 @@ export function ListPage({ listId }: { listId: string }) {
       )}
       {statusMgr && (
         <StatusManager listId={listId} statuses={data.list.statuses} onClose={() => setStatusMgr(false)} />
+      )}
+      {templatePicker && (
+        <TemplatePicker
+          listId={listId}
+          onClose={() => setTemplatePicker(false)}
+          onCreated={(taskId) => setOpenTaskId(taskId)}
+        />
       )}
     </div>
   );
