@@ -22,6 +22,7 @@ import {
   Pencil,
   FolderPlus,
   LogOut,
+  Star,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
@@ -35,11 +36,15 @@ import type { SpaceNode, FolderNode, ListNode } from "@/lib/queries";
 import { Avatar } from "@/components/ui/avatar";
 
 export function Sidebar({ onCollapse }: { onCollapse?: () => void }) {
-  const { workspace } = useWorkspace();
+  const { workspace, favorites } = useWorkspace();
   const { createSpace } = useHierarchy();
   const [creatingSpace, setCreatingSpace] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
+
+  const favLists = workspace.spaces
+    .flatMap((s) => [...s.lists, ...s.folders.flatMap((f) => f.lists)])
+    .filter((l) => favorites.includes(l.id));
 
   return (
     <aside className="flex h-full w-[var(--sidebar-w,260px)] shrink-0 flex-col border-r border-cu-border bg-cu-sidebar text-cu-text">
@@ -87,6 +92,24 @@ export function Sidebar({ onCollapse }: { onCollapse?: () => void }) {
         <InboxButton />
         <NavItem icon={<LayoutGrid className="h-4 w-4" />} label="Dashboards" />
       </nav>
+
+      {favLists.length > 0 && (
+        <div className="mt-1 px-2">
+          <div className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-cu-text-tertiary">
+            Favorites
+          </div>
+          {favLists.map((l) => (
+            <button
+              key={l.id}
+              onClick={() => router.push(`/l/${l.id}`)}
+              className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-[13px] text-cu-text hover:bg-cu-hover-strong"
+            >
+              <Star className="h-3.5 w-3.5 fill-[#ffcc00] text-[#ffcc00]" />
+              <span className="truncate">{l.name}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="mx-3 my-2 border-t border-cu-border" />
 

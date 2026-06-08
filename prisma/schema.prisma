@@ -35,6 +35,19 @@ model User {
   notifications Notification[]    @relation("NotifRecipient")
   actedNotifs   Notification[]    @relation("NotifActor")
   timeEntries   TimeEntry[]
+  favorites     Favorite[]
+}
+
+model Favorite {
+  id     String @id @default(cuid())
+  userId String
+  listId String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  list List @relation(fields: [listId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, listId])
+  @@index([userId])
 }
 
 model Notification {
@@ -164,6 +177,7 @@ model List {
   customFields CustomField[]
   tasks        Task[]
   views        View[]
+  favorites    Favorite[]
 
   @@index([spaceId])
   @@index([folderId])

@@ -19,7 +19,8 @@ import {
 import { cn } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
 import { TemplatePicker } from "@/components/views/template-picker";
-import { useList, useCreateTask } from "@/lib/hooks";
+import { useList, useCreateTask, useToggleFavorite } from "@/lib/hooks";
+import { useWorkspace } from "@/components/workspace-context";
 import { apiSend } from "@/lib/api";
 import { ViewType } from "@/lib/enums";
 import { EMPTY_VIEW_STATE, applyViewState, type ViewState } from "@/lib/view-state";
@@ -60,6 +61,9 @@ function vsFromConfig(config: unknown): ViewState {
 export function ListPage({ listId }: { listId: string }) {
   const { data, isLoading, error } = useList(listId);
   const create = useCreateTask(listId);
+  const { favorites } = useWorkspace();
+  const toggleFav = useToggleFavorite();
+  const isFav = favorites.includes(listId);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -156,8 +160,12 @@ export function ListPage({ listId }: { listId: string }) {
       </div>
       <div className="flex items-center gap-2 px-4 pt-1">
         <h1 className="text-lg font-semibold text-cu-text">{list.name}</h1>
-        <button className="text-cu-text-tertiary hover:text-[#ffcc00]">
-          <Star className="h-4 w-4" />
+        <button
+          onClick={() => toggleFav.mutate(listId)}
+          aria-label={isFav ? "Remove from favorites" : "Add to favorites"}
+          className={cn("hover:text-[#ffcc00]", isFav ? "text-[#ffcc00]" : "text-cu-text-tertiary")}
+        >
+          <Star className={cn("h-4 w-4", isFav && "fill-current")} />
         </button>
         <DropdownMenu.Root>
           <DropdownMenu.Trigger asChild>
