@@ -196,6 +196,7 @@ export function TaskModal({
                       comments={task.comments}
                       activities={task.activities}
                       statuses={task.list.statuses}
+                      members={workspace.members.map((m) => m.user)}
                       currentUserId={currentUser.id}
                       mentions={mentions}
                       onChange={invalidate}
@@ -334,8 +335,13 @@ function SubtaskComposer({ onSubmit }: { onSubmit: (name: string) => void }) {
 
 type ActivityRecord = TaskDetail["activities"][number];
 
-function activityText(a: ActivityRecord, statusName: (id: string) => string | undefined): string {
+function activityText(
+  a: ActivityRecord,
+  statusName: (id: string) => string | undefined,
+  memberName: (id: string) => string,
+): string {
   const d = (a.data ?? {}) as Record<string, unknown>;
+  const names = (ids: unknown) => (Array.isArray(ids) ? ids.map((id) => memberName(String(id))).join(", ") : "");
   switch (a.type) {
     case "created":
       return d.fromTemplate ? `created this task from “${String(d.fromTemplate)}”` : "created this task";
@@ -343,6 +349,18 @@ function activityText(a: ActivityRecord, statusName: (id: string) => string | un
       const name = typeof d.toId === "string" ? statusName(d.toId) : undefined;
       return name ? `set status to ${name}` : "changed the status";
     }
+    case "renamed":
+      return d.name ? `renamed this task to “${String(d.name)}”` : "renamed this task";
+    case "priority_changed":
+      return d.priority
+        ? `set priority to ${String(d.priority).charAt(0) + String(d.priority).slice(1).toLowerCase()}`
+        : "cleared the priority";
+    case "due_changed":
+      return d.dueDate ? `set the due date to ${format(new Date(String(d.dueDate)), "MMM d")}` : "cleared the due date";
+    case "assignee_added":
+      return `assigned ${names(d.userIds)}`;
+    case "assignee_removed":
+      return `unassigned ${names(d.userIds)}`;
     case "attachment_added":
       return d.name ? `attached ${String(d.name)}` : "added an attachment";
     default:
@@ -353,9 +371,11 @@ function activityText(a: ActivityRecord, statusName: (id: string) => string | un
 function ActivityLine({
   activity,
   statusName,
+  memberName,
 }: {
   activity: ActivityRecord;
   statusName: (id: string) => string | undefined;
+  memberName: (id: string) => string;
 }) {
   return (
     <div className="flex items-center gap-2 text-[12px] text-cu-text-tertiary">
@@ -366,7 +386,7 @@ function ActivityLine({
       )}
       <span className="min-w-0 flex-1 truncate">
         <span className="font-medium text-cu-text-secondary">{activity.user?.name ?? "Someone"}</span>{" "}
-        {activityText(activity, statusName)}
+        {activityText(activity, statusName, memberName)}
       </span>
       <span className="shrink-0">{format(new Date(activity.createdAt), "MMM d, h:mm a")}</span>
     </div>
@@ -377,6 +397,7 @@ function ActivityFeed({
   comments,
   activities,
   statuses,
+  members,
   currentUserId,
   mentions,
   onChange,
@@ -384,11 +405,13 @@ function ActivityFeed({
   comments: TaskDetail["comments"];
   activities: ActivityRecord[];
   statuses: { id: string; name: string }[];
+  members: { id: string; name: string }[];
   currentUserId: string;
   mentions: { id: string; label: string }[];
   onChange: () => void;
 }) {
   const statusName = (id: string) => statuses.find((s) => s.id === id)?.name;
+  const memberName = (id: string) => members.find((m) => m.id === id)?.name ?? "someone";
   // merge comments + non-comment activities into one chronological timeline
   const feed = [
     ...comments.map((c) => ({ kind: "comment" as const, at: +new Date(c.createdAt), c })),
@@ -413,7 +436,7 @@ function ActivityFeed({
             onChange={onChange}
           />
         ) : (
-          <ActivityLine key={`a-${item.a.id}`} activity={item.a} statusName={statusName} />
+          <ActivityLine key={`a-${item.a.id}`} activity={item.a} statusName={statusName} memberName={memberName} />
         ),
       )}
     </div>

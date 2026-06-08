@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { Priority } from "@/lib/generated/prisma/client";
+import { Priority, Prisma } from "@/lib/generated/prisma/client";
 import { taskInclude } from "@/lib/queries";
 import { publish } from "@/lib/events";
 import { createNotifications } from "@/lib/notifications";
@@ -92,15 +92,28 @@ export async function updateTask(taskId: string, patch: TaskPatch, actorId?: str
   if (patch.dueDate !== undefined)
     data.dueDate = patch.dueDate ? new Date(patch.dueDate) : null;
 
+  // collect activity-log entries for changes worth an audit trail
+  const activityLog: { type: string; data: Record<string, unknown> }[] = [];
+  if (patch.name !== undefined && patch.name !== existing.name) {
+    activityLog.push({ type: "renamed", data: { name: patch.name } });
+  }
+  if (patch.priority !== undefined && patch.priority !== existing.priority) {
+    activityLog.push({ type: "priority_changed", data: { priority: patch.priority } });
+  }
+  if (patch.dueDate !== undefined) {
+    const newDue = patch.dueDate ? new Date(patch.dueDate).toISOString() : null;
+    const oldDue = existing.dueDate ? existing.dueDate.toISOString() : null;
+    if (newDue !== oldDue) activityLog.push({ type: "due_changed", data: { dueDate: newDue } });
+  }
+
   // status change → set completedAt + log
-  let statusChanged: { fromId: string; toId: string } | null = null;
   let becameDone = false;
   if (patch.statusId !== undefined && patch.statusId !== existing.statusId) {
     data.statusId = patch.statusId;
     const newStatus = await prisma.status.findUnique({ where: { id: patch.statusId } });
     becameDone = newStatus?.type === "DONE";
     data.completedAt = becameDone ? new Date() : null;
-    statusChanged = { fromId: existing.statusId, toId: patch.statusId };
+    activityLog.push({ type: "status_changed", data: { fromId: existing.statusId, toId: patch.statusId } });
   }
 
   // assignees full-set replacement
@@ -111,6 +124,8 @@ export async function updateTask(taskId: string, patch: TaskPatch, actorId?: str
     const toAdd = [...next].filter((id) => !current.has(id));
     addedAssignees = toAdd;
     const toRemove = [...current].filter((id) => !next.has(id));
+    if (toAdd.length) activityLog.push({ type: "assignee_added", data: { userIds: toAdd } });
+    if (toRemove.length) activityLog.push({ type: "assignee_removed", data: { userIds: toRemove } });
     data.assignees = {
       deleteMany: toRemove.length ? { userId: { in: toRemove } } : undefined,
       create: toAdd.map((userId) => ({ userId })),
@@ -147,14 +162,9 @@ export async function updateTask(taskId: string, patch: TaskPatch, actorId?: str
     include: taskInclude,
   });
 
-  if (statusChanged) {
-    await prisma.activity.create({
-      data: {
-        taskId,
-        userId: actorId,
-        type: "status_changed",
-        data: statusChanged,
-      },
+  if (activityLog.length) {
+    await prisma.activity.createMany({
+      data: activityLog.map((a) => ({ taskId, userId: actorId, type: a.type, data: a.data as Prisma.InputJsonValue })),
     });
   }
 
