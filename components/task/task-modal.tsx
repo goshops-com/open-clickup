@@ -41,10 +41,12 @@ export function TaskModal({
   taskId,
   listId,
   onClose,
+  onOpenTask,
 }: {
   taskId: string;
   listId: string;
   onClose: () => void;
+  onOpenTask?: (id: string) => void;
 }) {
   const qc = useQueryClient();
   const { currentUser, workspace } = useWorkspace();
@@ -108,10 +110,10 @@ export function TaskModal({
                 <span className="text-[13px] text-cu-text-tertiary">in {task.list.name}</span>
                 <div className="ml-auto flex items-center gap-1">
                   <TaskMenu taskId={taskId} defaultName={task.name} />
-                  <button className="rounded p-1.5 text-cu-text-tertiary hover:bg-cu-hover">
+                  <button aria-label="Expand" className="rounded p-1.5 text-cu-text-tertiary hover:bg-cu-hover">
                     <Expand className="h-4 w-4" />
                   </button>
-                  <Dialog.Close className="rounded p-1.5 text-cu-text-tertiary hover:bg-cu-hover">
+                  <Dialog.Close aria-label="Close" className="rounded p-1.5 text-cu-text-tertiary hover:bg-cu-hover">
                     <X className="h-4 w-4" />
                   </Dialog.Close>
                 </div>
@@ -147,9 +149,11 @@ export function TaskModal({
                     </h3>
                     <div className="rounded-lg border border-cu-border">
                       {task.subtasks.map((sub) => (
-                        <div
+                        <button
                           key={sub.id}
-                          className="flex items-center gap-2 border-b border-cu-border px-3 py-2 last:border-0"
+                          onClick={() => onOpenTask?.(sub.id)}
+                          className="flex w-full items-center gap-2 border-b border-cu-border px-3 py-2 text-left last:border-0 hover:bg-cu-hover disabled:cursor-default"
+                          disabled={!onOpenTask}
                         >
                           <StatusCircle status={sub.status} size={14} />
                           <span className="text-[13px]">{sub.name}</span>
@@ -158,7 +162,7 @@ export function TaskModal({
                               <Avatar key={a.userId} user={a.user} size="sm" ring />
                             ))}
                           </div>
-                        </div>
+                        </button>
                       ))}
                       <SubtaskComposer onSubmit={(name) => addSubtask.mutate(name)} />
                     </div>

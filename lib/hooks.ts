@@ -4,6 +4,7 @@ import {
   useMutation,
   useQuery,
   useQueryClient,
+  keepPreviousData,
 } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { apiGet, apiSend } from "@/lib/api";
@@ -81,6 +82,7 @@ export function useMyTasks() {
   return useQuery({
     queryKey: ["my-tasks"],
     queryFn: () => apiGet<{ tasks: MyTask[] }>("/api/me/tasks"),
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -141,6 +143,8 @@ export function useList(listId: string | undefined) {
     queryKey: ["list", listId],
     queryFn: () => apiGet<ListData>(`/api/lists/${listId}`),
     enabled: !!listId,
+    // keep the previous list visible while the next one loads (no skeleton flash)
+    placeholderData: keepPreviousData,
   });
 }
 
