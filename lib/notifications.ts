@@ -1,16 +1,7 @@
 import { prisma } from "@/lib/db";
 
-/** Extract mentioned user ids from tiptap mention HTML (spans carrying data-id). */
-export function extractMentionIds(html: string): string[] {
-  const ids = new Set<string>();
-  const tags = html.match(/<span\b[^>]*>/g) ?? [];
-  for (const tag of tags) {
-    if (!/mention/.test(tag)) continue;
-    const m = tag.match(/data-id="([^"]+)"/);
-    if (m) ids.add(m[1]);
-  }
-  return [...ids];
-}
+// re-exported for callers that import from this module
+export { extractMentionIds } from "@/lib/mentions";
 
 export async function createNotifications(opts: {
   recipientIds: string[];
