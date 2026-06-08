@@ -192,20 +192,14 @@ export function TaskModal({
                   {/* activity / comments */}
                   <section className="mt-8">
                     <h3 className="mb-3 text-[13px] font-semibold text-cu-text-secondary">Activity</h3>
-                    <div className="space-y-4">
-                      {task.comments.map((c) => (
-                        <CommentItem
-                          key={c.id}
-                          comment={c}
-                          currentUserId={currentUser.id}
-                          mentions={mentions}
-                          onChange={invalidate}
-                        />
-                      ))}
-                      {task.comments.length === 0 && (
-                        <p className="text-[13px] text-cu-text-tertiary">No comments yet.</p>
-                      )}
-                    </div>
+                    <ActivityFeed
+                      comments={task.comments}
+                      activities={task.activities}
+                      statuses={task.list.statuses}
+                      currentUserId={currentUser.id}
+                      mentions={mentions}
+                      onChange={invalidate}
+                    />
 
                     <CommentComposer
                       user={currentUser}
@@ -334,6 +328,94 @@ function SubtaskComposer({ onSubmit }: { onSubmit: (name: string) => void }) {
         placeholder="Add a subtask"
         className="flex-1 bg-transparent text-[13px] outline-none placeholder:text-cu-text-tertiary"
       />
+    </div>
+  );
+}
+
+type ActivityRecord = TaskDetail["activities"][number];
+
+function activityText(a: ActivityRecord, statusName: (id: string) => string | undefined): string {
+  const d = (a.data ?? {}) as Record<string, unknown>;
+  switch (a.type) {
+    case "created":
+      return d.fromTemplate ? `created this task from “${String(d.fromTemplate)}”` : "created this task";
+    case "status_changed": {
+      const name = typeof d.toId === "string" ? statusName(d.toId) : undefined;
+      return name ? `set status to ${name}` : "changed the status";
+    }
+    case "attachment_added":
+      return d.name ? `attached ${String(d.name)}` : "added an attachment";
+    default:
+      return a.type.replace(/_/g, " ");
+  }
+}
+
+function ActivityLine({
+  activity,
+  statusName,
+}: {
+  activity: ActivityRecord;
+  statusName: (id: string) => string | undefined;
+}) {
+  return (
+    <div className="flex items-center gap-2 text-[12px] text-cu-text-tertiary">
+      {activity.user ? (
+        <Avatar user={activity.user} size="sm" />
+      ) : (
+        <span className="h-6 w-6 shrink-0 rounded-full bg-cu-hover-strong" />
+      )}
+      <span className="min-w-0 flex-1 truncate">
+        <span className="font-medium text-cu-text-secondary">{activity.user?.name ?? "Someone"}</span>{" "}
+        {activityText(activity, statusName)}
+      </span>
+      <span className="shrink-0">{format(new Date(activity.createdAt), "MMM d, h:mm a")}</span>
+    </div>
+  );
+}
+
+function ActivityFeed({
+  comments,
+  activities,
+  statuses,
+  currentUserId,
+  mentions,
+  onChange,
+}: {
+  comments: TaskDetail["comments"];
+  activities: ActivityRecord[];
+  statuses: { id: string; name: string }[];
+  currentUserId: string;
+  mentions: { id: string; label: string }[];
+  onChange: () => void;
+}) {
+  const statusName = (id: string) => statuses.find((s) => s.id === id)?.name;
+  // merge comments + non-comment activities into one chronological timeline
+  const feed = [
+    ...comments.map((c) => ({ kind: "comment" as const, at: +new Date(c.createdAt), c })),
+    ...activities
+      .filter((a) => a.type !== "commented")
+      .map((a) => ({ kind: "activity" as const, at: +new Date(a.createdAt), a })),
+  ].sort((x, y) => x.at - y.at);
+
+  if (feed.length === 0) {
+    return <p className="text-[13px] text-cu-text-tertiary">No activity yet.</p>;
+  }
+
+  return (
+    <div className="space-y-4">
+      {feed.map((item) =>
+        item.kind === "comment" ? (
+          <CommentItem
+            key={`c-${item.c.id}`}
+            comment={item.c}
+            currentUserId={currentUserId}
+            mentions={mentions}
+            onChange={onChange}
+          />
+        ) : (
+          <ActivityLine key={`a-${item.a.id}`} activity={item.a} statusName={statusName} />
+        ),
+      )}
     </div>
   );
 }
