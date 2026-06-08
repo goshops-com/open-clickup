@@ -32,20 +32,22 @@ Hierarchy, five views, custom fields, real-time collaboration and dark mode — 
 
 **5 views** (per list, each with its own saved configuration):
 - **List** — grouped, inline-editable, drag-to-reorder, custom-field columns
-- **Board** — Kanban with drag-and-drop between columns
-- **Calendar** — month grid, tasks on their due dates
-- **Gantt** — timeline with start→due bars
-- **Table** — spreadsheet-style grid
+- **Board** — Kanban with drag-and-drop, collapsible columns, WIP limits
+- **Calendar** — month & week views, drag tasks to reschedule
+- **Gantt** — timeline with start→due bars you can drag/resize, plus dependency arrows
+- **Table** — spreadsheet-style grid with multi-select
 
-**Tasks** — rich-text descriptions & comments with **@mentions**, custom statuses, priorities, multiple assignees, start/due dates, tags, **custom fields** (text, number, dropdown, labels, date, checkbox, rating…), subtasks, **checklists**, and an activity log.
+**Tasks** — rich-text descriptions, custom statuses, priorities, multiple assignees, start/due dates, tags, **custom fields** (text, number, dropdown, labels, date, checkbox, rating…), subtasks, **checklists**, **time tracking** (estimates + live timer), **dependencies** (waiting-on / blocking), **recurring** tasks, **file attachments**, watchers, duplicate, and move-between-lists.
 
-**Productivity** — filter / sort / **group-by** (status · assignee · priority) on every view, a **⌘K command palette**, **multi-select + bulk actions**, a status-workflow editor, and **dark mode**.
+**Collaboration** — threaded **comments** with **@mentions**, emoji reactions, edit/delete and resolve; an **Inbox** with notifications (mentions, assignments, comments); a per-task **activity timeline**; and live updates over SSE.
 
-**Real-time** — changes broadcast over Server-Sent Events, so collaborators see edits live without refreshing.
+**Productivity** — filter / sort / **group-by** (status · assignee · priority) on every view, a **⌘K command palette**, keyboard shortcuts, **multi-select + bulk actions**, **task templates**, **favorites**, a "My Work" home, a status-workflow editor, **dark mode**, and a mobile-responsive layout.
 
-**Built to run in production** — email/password **auth with server-side sessions** (scrypt-hashed), a fully **Zod-validated** API with consistent error handling, and render-capped lists that stay fast at scale.
+**Built to run in production** — email/password **auth with server-side sessions** (scrypt-hashed), **role-based permissions**, a fully **Zod-validated** API, security headers + auth rate limiting, a `/api/health` probe, a one-command **Docker** self-host, and unit + e2e tests in CI.
 
-| Board | Calendar | Gantt |
+![My Work](screenshots/home.png)
+
+| Board | Calendar | Gantt (with dependencies) |
 |---|---|---|
 | ![Board](screenshots/board.png) | ![Calendar](screenshots/calendar.png) | ![Gantt](screenshots/gantt.png) |
 
