@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { ChevronRight, ChevronDown, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ListData, TaskWithRelations, StatusModel, CustomFieldWithOptions } from "@/lib/queries";
-import { useUpdateTask, useCreateTask } from "@/lib/hooks";
+import { useUpdateTask, useCreateTask, useBulk } from "@/lib/hooks";
 import { useWorkspace } from "@/components/workspace-context";
 import { groupTasks, type TaskGroup } from "@/lib/grouping";
 import type { GroupBy } from "@/lib/view-state";
@@ -13,6 +13,7 @@ import { PriorityControl } from "@/components/menus/priority-control";
 import { AssigneeControl } from "@/components/menus/assignee-control";
 import { DueDate } from "@/components/ui/primitives";
 import { CustomFieldCell } from "@/components/views/custom-field-cell";
+import { BulkBar } from "@/components/views/bulk-bar";
 
 const PAGE_SIZE = 50;
 
@@ -31,6 +32,16 @@ export function TableView({
   const { workspace } = useWorkspace();
   const members = useMemo(() => workspace.members.map((m) => m.user), [workspace.members]);
   const update = useUpdateTask(list.id);
+  const bulk = useBulk(list.id);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const toggleSelect = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const clearSelect = () => setSelected(new Set());
 
   const groups = useMemo(
     () => groupTasks(tasks, groupBy, { statuses, members }),
@@ -72,11 +83,28 @@ export function TableView({
             customFields={customFields}
             cols={cols}
             listId={list.id}
+            selected={selected}
+            onToggleSelect={toggleSelect}
             onOpenTask={onOpenTask}
             onUpdate={(taskId, patch) => update.mutate({ taskId, patch })}
           />
         ))}
       </div>
+
+      {selected.size > 0 && (
+        <BulkBar
+          count={selected.size}
+          statuses={statuses}
+          onSetStatus={(statusId) => bulk.mutate({ ids: [...selected], patch: { statusId } })}
+          onSetPriority={(priority) => bulk.mutate({ ids: [...selected], patch: { priority } })}
+          onSetAssignees={(assigneeIds) => bulk.mutate({ ids: [...selected], patch: { assigneeIds } })}
+          onDelete={() => {
+            bulk.mutate({ ids: [...selected], delete: true });
+            clearSelect();
+          }}
+          onClear={clearSelect}
+        />
+      )}
     </div>
   );
 }
@@ -89,6 +117,8 @@ function TableGroup({
   customFields,
   cols,
   listId,
+  selected,
+  onToggleSelect,
   onOpenTask,
   onUpdate,
 }: {
@@ -99,6 +129,8 @@ function TableGroup({
   customFields: CustomFieldWithOptions[];
   cols: string;
   listId: string;
+  selected: Set<string>;
+  onToggleSelect: (id: string) => void;
   onOpenTask: (id: string) => void;
   onUpdate: (taskId: string, patch: Record<string, unknown>) => void;
 }) {
@@ -125,14 +157,29 @@ function TableGroup({
 
       {!collapsed && (
         <>
-          {shown.map((task) => (
+          {shown.map((task) => {
+            const isSelected = selected.has(task.id);
+            return (
             <div
               key={task.id}
-              className="grid cursor-pointer items-center border-b border-cu-border/60 hover:bg-cu-hover/50"
+              className={cn(
+                "group/row grid cursor-pointer items-center border-b border-cu-border/60 hover:bg-cu-hover/50",
+                isSelected && "bg-cu-purple-light/40",
+              )}
               style={{ gridTemplateColumns: cols }}
               onClick={() => onOpenTask(task.id)}
             >
               <Cell className="gap-2 pl-3">
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onClick={(e) => e.stopPropagation()}
+                  onChange={() => onToggleSelect(task.id)}
+                  className={cn(
+                    "h-3.5 w-3.5 shrink-0 cursor-pointer accent-cu-purple",
+                    !isSelected && "opacity-0 group-hover/row:opacity-100",
+                  )}
+                />
                 <span onClick={(e) => e.stopPropagation()}>
                   <StatusControl current={task.status} statuses={statuses} onChange={(s) => onUpdate(task.id, { statusId: s })} />
                 </span>
@@ -160,7 +207,8 @@ function TableGroup({
               ))}
               <Cell />
             </div>
-          ))}
+            );
+          })}
           {hidden > 0 && (
             <button
               onClick={() => setVisible((v) => v + PAGE_SIZE)}
