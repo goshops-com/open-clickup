@@ -37,9 +37,12 @@ export function RichEditor({
   autoFocus?: boolean;
   mentions?: MentionItem[];
 }) {
-  // ref so the mention suggestion always reads the latest list
+  // ref so the mention suggestion (created once) always reads the latest list;
+  // synced in an effect — the suggestion only reads it when the user types "@".
   const mentionsRef = useRef<MentionItem[]>(mentions ?? []);
-  mentionsRef.current = mentions ?? [];
+  useEffect(() => {
+    mentionsRef.current = mentions ?? [];
+  }, [mentions]);
 
   const editor = useEditor({
     extensions: [
