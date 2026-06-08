@@ -3,7 +3,8 @@ import type { NextRequest } from "next/server";
 
 // Redirect unauthenticated page requests to /login (presence check only;
 // API routes validate the session for real). Excludes /api, static assets, /login.
-export function middleware(req: NextRequest) {
+// (Next renamed the "middleware" file convention to "proxy".)
+export function proxy(req: NextRequest) {
   const hasSession = req.cookies.has("cu_session");
   const { pathname } = req.nextUrl;
 
