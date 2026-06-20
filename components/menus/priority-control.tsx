@@ -48,6 +48,7 @@ export function PriorityControl({
           <DropdownMenu.Separator className="my-1 h-px bg-cu-border" />
           <DropdownMenu.Item
             onSelect={() => onChange(null)}
+            aria-label="Clear priority"
             className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-[13px] text-cu-text-secondary outline-none hover:bg-cu-hover focus:bg-cu-hover"
           >
             <X className="h-3.5 w-3.5" />

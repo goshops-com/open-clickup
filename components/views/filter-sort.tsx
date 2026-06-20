@@ -69,6 +69,7 @@ export function FilterMenu({
             {count > 0 && (
               <button
                 onClick={() => onChange({ ...state, filters: { priorities: [], assignees: [], tags: [] } })}
+                aria-label="Clear filters"
                 className="flex items-center gap-0.5 text-[11px] text-cu-text-tertiary hover:text-cu-urgent"
               >
                 <X className="h-3 w-3" /> Clear
@@ -247,6 +248,7 @@ export function SortMenu({
                 e.preventDefault();
                 onChange({ ...state, sort: { field: null, dir: "asc" } });
               }}
+              aria-label="Clear sort"
               className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-[13px] text-cu-text-secondary outline-none hover:bg-cu-hover"
             >
               <X className="h-3.5 w-3.5" /> Clear sort

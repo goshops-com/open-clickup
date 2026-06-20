@@ -68,7 +68,7 @@ export function StatusManager({
         >
           <div className="flex items-center justify-between border-b border-cu-border px-4 py-3">
             <Dialog.Title className="text-sm font-semibold">Statuses</Dialog.Title>
-            <Dialog.Close className="rounded p-1 text-cu-text-tertiary hover:bg-cu-hover">
+            <Dialog.Close className="rounded p-1 text-cu-text-tertiary hover:bg-cu-hover" aria-label="Close dialog">
               <X className="h-4 w-4" />
             </Dialog.Close>
           </div>
@@ -77,10 +77,10 @@ export function StatusManager({
             {statuses.map((s, i) => (
               <div key={s.id} className="flex items-center gap-2 rounded-lg px-1 py-1.5 hover:bg-cu-hover/50">
                 <div className="flex flex-col">
-                  <button onClick={() => move(i, -1)} disabled={i === 0} className="text-cu-text-tertiary hover:text-cu-text disabled:opacity-20">
+                  <button onClick={() => move(i, -1)} disabled={i === 0} className="text-cu-text-tertiary hover:text-cu-text disabled:opacity-20" aria-label="Move up">
                     <ChevronUp className="h-3 w-3" />
                   </button>
-                  <button onClick={() => move(i, 1)} disabled={i === statuses.length - 1} className="text-cu-text-tertiary hover:text-cu-text disabled:opacity-20">
+                  <button onClick={() => move(i, 1)} disabled={i === statuses.length - 1} className="text-cu-text-tertiary hover:text-cu-text disabled:opacity-20" aria-label="Move down">
                     <ChevronDown className="h-3 w-3" />
                   </button>
                 </div>

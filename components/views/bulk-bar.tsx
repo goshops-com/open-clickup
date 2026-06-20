@@ -57,7 +57,7 @@ export function BulkBar({
             </Item>
           ))}
           <div className="my-1 h-px bg-cu-border" />
-          <Item onSelect={() => onSetPriority(null)}>
+          <Item onSelect={() => onSetPriority(null)} aria-label="Clear priority">
             <X className="h-3.5 w-3.5" /> Clear
           </Item>
         </BarMenu>
@@ -74,7 +74,7 @@ export function BulkBar({
         </button>
 
         <span className="mx-1 h-5 w-px bg-white/20" />
-        <button onClick={onClear} className="rounded-lg p-1.5 hover:bg-white/10" title="Clear selection">
+        <button onClick={onClear} className="rounded-lg p-1.5 hover:bg-white/10" title="Clear selection" aria-label="Clear selection">
           <X className="h-4 w-4" />
         </button>
       </div>

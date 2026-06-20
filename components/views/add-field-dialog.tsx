@@ -50,7 +50,7 @@ export function AddFieldDialog({ listId, onClose }: { listId: string; onClose: (
         >
           <div className="flex items-center justify-between border-b border-cu-border px-4 py-3">
             <Dialog.Title className="text-sm font-semibold">New custom field</Dialog.Title>
-            <Dialog.Close className="rounded p-1 text-cu-text-tertiary hover:bg-cu-hover">
+            <Dialog.Close className="rounded p-1 text-cu-text-tertiary hover:bg-cu-hover" aria-label="Close dialog">
               <X className="h-4 w-4" />
             </Dialog.Close>
           </div>

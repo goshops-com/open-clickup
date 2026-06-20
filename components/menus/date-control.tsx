@@ -134,6 +134,7 @@ export function DateControl({
           {current && (
             <button
               onClick={() => pick(null)}
+              aria-label="Clear date"
               className="mt-2 flex w-full items-center justify-center gap-1 rounded border border-cu-border py-1 text-[12px] text-cu-text-secondary hover:bg-cu-hover"
             >
               <X className="h-3.5 w-3.5" /> Clear date

@@ -108,6 +108,7 @@ function DepRow({ task, onRemove }: { task: LinkedTask; onRemove: () => void }) 
       <button
         onClick={onRemove}
         className="rounded p-0.5 text-cu-text-tertiary opacity-0 transition-opacity hover:text-cu-urgent group-hover:opacity-100"
+        aria-label="Remove dependency"
       >
         <X className="h-3.5 w-3.5" />
       </button>

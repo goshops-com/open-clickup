@@ -36,6 +36,7 @@ export function Checklists({
       <button
         onClick={addChecklist}
         className="mt-2 flex items-center gap-1.5 rounded px-1 py-1 text-[13px] text-cu-text-tertiary hover:text-cu-text-secondary"
+        aria-label="Add checklist"
       >
         <Plus className="h-3.5 w-3.5" /> Add checklist
       </button>

@@ -64,6 +64,7 @@ export function Sidebar({ onCollapse }: { onCollapse?: () => void }) {
           onClick={onCollapse}
           className="rounded p-1 text-cu-text-tertiary hover:bg-cu-hover-strong hover:text-cu-text"
           title="Collapse sidebar"
+          aria-label="Collapse sidebar"
         >
           <PanelLeftClose className="h-4 w-4" />
         </button>
@@ -120,6 +121,7 @@ export function Sidebar({ onCollapse }: { onCollapse?: () => void }) {
           onClick={() => setCreatingSpace(true)}
           className="rounded p-0.5 text-cu-text-tertiary hover:bg-cu-hover-strong hover:text-cu-text"
           title="New Space"
+          aria-label="New Space"
         >
           <Plus className="h-3.5 w-3.5" />
         </button>
@@ -147,10 +149,10 @@ export function Sidebar({ onCollapse }: { onCollapse?: () => void }) {
         <UserSwitcher />
         <div className="ml-auto flex items-center gap-0.5">
           <ThemeToggle />
-          <button className="rounded p-1 text-cu-text-tertiary hover:bg-cu-hover-strong hover:text-cu-text">
+          <button className="rounded p-1 text-cu-text-tertiary hover:bg-cu-hover-strong hover:text-cu-text" title="Notifications" aria-label="Notifications">
             <Bell className="h-4 w-4" />
           </button>
-          <button className="rounded p-1 text-cu-text-tertiary hover:bg-cu-hover-strong hover:text-cu-text">
+          <button className="rounded p-1 text-cu-text-tertiary hover:bg-cu-hover-strong hover:text-cu-text" title="Settings" aria-label="Settings">
             <Settings className="h-4 w-4" />
           </button>
         </div>
