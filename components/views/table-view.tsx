@@ -143,7 +143,7 @@ function TableGroup({
   return (
     <div>
       <div className="flex items-center gap-2 bg-cu-sidebar/50 px-3 py-1.5">
-        <button onClick={() => setCollapsed((c) => !c)} className="text-cu-text-tertiary hover:text-cu-text">
+        <button onClick={() => setCollapsed((c) => !c)} className="text-cu-text-tertiary hover:text-cu-text" aria-label={collapsed ? `Expand ${group.label}` : `Collapse ${group.label}`}>
           {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </button>
         <span

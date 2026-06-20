@@ -46,7 +46,7 @@ export function ProfileDialog({ open, onClose }: { open: boolean; onClose: () =>
         <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[min(380px,92vw)] -translate-x-1/2 -translate-y-1/2 rounded-xl bg-cu-panel shadow-2xl outline-none">
           <div className="flex items-center justify-between border-b border-cu-border px-4 py-3">
             <Dialog.Title className="text-[14px] font-semibold text-cu-text">My profile</Dialog.Title>
-            <Dialog.Close className="rounded p-1 text-cu-text-tertiary hover:bg-cu-hover">
+            <Dialog.Close className="rounded p-1 text-cu-text-tertiary hover:bg-cu-hover" aria-label="Close dialog">
               <X className="h-4 w-4" />
             </Dialog.Close>
           </div>

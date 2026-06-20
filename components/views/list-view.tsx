@@ -274,7 +274,7 @@ function Group({
   return (
     <div className="border-b border-cu-border/70">
       <div className="flex items-center gap-2 px-3 py-2">
-        <button onClick={() => setCollapsed((c) => !c)} className="text-cu-text-tertiary hover:text-cu-text">
+        <button onClick={() => setCollapsed((c) => !c)} className="text-cu-text-tertiary hover:text-cu-text" aria-label={collapsed ? `Expand ${group.label}` : `Collapse ${group.label}`}>
           {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </button>
         <span
@@ -287,6 +287,7 @@ function Group({
         <button
           onClick={() => setAdding(true)}
           className="flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-cu-text-tertiary hover:bg-cu-hover hover:text-cu-text"
+          aria-label="Add task"
         >
           <Plus className="h-3.5 w-3.5" /> Add Task
         </button>
@@ -454,6 +455,7 @@ function TaskRow({
               <button
                 onClick={(e) => { e.stopPropagation(); setExpanded((x) => !x); }}
                 className="text-cu-text-tertiary hover:text-cu-text"
+                aria-label={expanded ? "Collapse subtasks" : "Expand subtasks"}
               >
                 {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
               </button>

@@ -234,7 +234,7 @@ function ManualAdd({ onAdd }: { onAdd: (seconds: number, description?: string) =
       >
         Add
       </button>
-      <button onClick={() => setOpen(false)} className="rounded p-1 text-cu-text-tertiary hover:bg-cu-hover">
+      <button onClick={() => setOpen(false)} className="rounded p-1 text-cu-text-tertiary hover:bg-cu-hover" aria-label="Close time entry form">
         <X className="h-4 w-4" />
       </button>
     </div>

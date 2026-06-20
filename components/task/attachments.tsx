@@ -145,6 +145,7 @@ function AttachmentCard({ attachment, onDelete }: { attachment: Attachment; onDe
         <button
           onClick={onDelete}
           className="rounded p-1 text-cu-text-tertiary hover:bg-cu-hover hover:text-cu-urgent"
+          aria-label="Delete attachment"
           title="Delete"
         >
           <X className="h-3.5 w-3.5" />

@@ -24,6 +24,7 @@ export function ThemeToggle() {
       onClick={toggle}
       className="rounded p-1 text-cu-text-tertiary hover:bg-cu-hover-strong hover:text-cu-text"
       title={dark ? "Light mode" : "Dark mode"}
+      aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
     >
       {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
     </button>
