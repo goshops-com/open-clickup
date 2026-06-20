@@ -15,7 +15,12 @@ const GROUPS: { title: string; items: { keys: string[]; label: string }[] }[] = 
   },
   {
     title: "Tasks",
-    items: [{ keys: ["C"], label: "Create a task in the current list" }],
+    items: [
+      { keys: ["C"], label: "Create a task in the current list" },
+      { keys: ["j", "k"], label: "Move focus down / up in list" },
+      { keys: ["x"], label: "Toggle selection of focused task" },
+      { keys: ["e", "Enter"], label: "Open focused task" },
+    ],
   },
 ];
 

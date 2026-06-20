@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronRight,
   ChevronDown,
@@ -72,6 +72,10 @@ export function ListView({
       return n;
     });
   const clearSelect = () => setSelected(new Set());
+
+  const [focusedTaskId, setFocusedTaskId] = useState<string | null>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+
 
   // drag-to-reorder is enabled only when grouping by status (cross-group = status change)
   const sortable = groupBy === "status";
@@ -151,12 +155,64 @@ export function ListView({
     update.mutate({ taskId: id, patch });
   }
 
+
+  // Build a flat ordered list for j/k navigation
+  const flatIndex = useMemo(() => {
+    const idx: { groupId: string; taskId: string }[] = [];
+    for (const g of groups) {
+      for (const t of g.tasks) {
+        idx.push({ groupId: g.id, taskId: t.id });
+      }
+    }
+    return idx;
+  }, [groups]);
+
+  const focusNext = useCallback(() => {
+    if (!focusedTaskId) { setFocusedTaskId(flatIndex[0]?.taskId ?? null); return; }
+    const fi = flatIndex.findIndex(x => x.taskId === focusedTaskId);
+    if (fi < flatIndex.length - 1) setFocusedTaskId(flatIndex[fi + 1].taskId);
+  }, [focusedTaskId, flatIndex]);
+
+  const focusPrev = useCallback(() => {
+    if (!focusedTaskId) { setFocusedTaskId(flatIndex[flatIndex.length - 1]?.taskId ?? null); return; }
+    const fi = flatIndex.findIndex(x => x.taskId === focusedTaskId);
+    if (fi > 0) setFocusedTaskId(flatIndex[fi - 1].taskId);
+  }, [focusedTaskId, flatIndex]);
+
+  const focusTaskById = useCallback((id: string) => {
+    setFocusedTaskId(id);
+  }, []);
+
+  // Keyboard navigation handler for list view
+  useEffect(() => {
+    function onListKey(e: KeyboardEvent) {
+      const el = e.target as HTMLElement | null;
+      if (!el) return;
+      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable) return;
+      if (!listRef.current?.contains(el)) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+      if (e.key === 'j' || e.key === 'ArrowDown') { e.preventDefault(); focusNext(); }
+      else if (e.key === 'k' || e.key === 'ArrowUp') { e.preventDefault(); focusPrev(); }
+      else if (e.key.toLowerCase() === 'x') {
+        e.preventDefault();
+        if (focusedTaskId) toggleSelect(focusedTaskId);
+      }
+      else if (e.key === 'e' || e.key === 'Enter') {
+        e.preventDefault();
+        if (focusedTaskId) onOpenTask(focusedTaskId);
+      }
+    }
+    window.addEventListener('keydown', onListKey);
+    return () => window.removeEventListener('keydown', onListKey);
+  }, [focusNext, focusPrev, focusedTaskId, onOpenTask, toggleSelect]);
+
   const gridStyle = {
     gridTemplateColumns: `minmax(260px,1fr) 120px 110px 120px ${customFields.map(() => "150px").join(" ")} 44px`,
   };
 
   const body = (
-    <>
+    <div ref={listRef} role="list" aria-label="Task list" tabIndex={-1}>
       <ColumnHeader customFields={customFields} gridStyle={gridStyle} onAddField={() => setAddingField(true)} />
       {groups.map((group) => (
         <Group
@@ -172,9 +228,11 @@ export function ListView({
           onToggleSelect={toggleSelect}
           onOpenTask={onOpenTask}
           onUpdate={(taskId, patch) => update.mutate({ taskId, patch })}
+          focusedTaskId={focusedTaskId}
+          onFocusTask={focusTaskById}
         />
       ))}
-    </>
+    </div>
   );
 
   return (
@@ -250,6 +308,8 @@ function Group({
   onToggleSelect,
   onOpenTask,
   onUpdate,
+  focusedTaskId,
+  onFocusTask,
 }: {
   group: TaskGroup;
   statuses: StatusModel[];
@@ -262,14 +322,17 @@ function Group({
   onToggleSelect: (id: string) => void;
   onOpenTask: (id: string) => void;
   onUpdate: (taskId: string, patch: Record<string, unknown>) => void;
+  focusedTaskId: string | null;
+  onFocusTask: (id: string) => void;
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const [adding, setAdding] = useState(false);
   const [visible, setVisible] = useState(PAGE_SIZE);
 
-  const rowProps = { statuses, customFields, gridStyle, selected, onToggleSelect, onOpenTask, onUpdate };
+  const rowProps = { statuses, customFields, gridStyle, selected, onToggleSelect, onOpenTask, onUpdate, focusedTaskId, onFocusTask };
   const shown = group.tasks.slice(0, visible);
   const hidden = group.tasks.length - shown.length;
+  const taskIds = shown.map(t => t.id);
 
   return (
     <div className="border-b border-cu-border/70">
@@ -294,11 +357,22 @@ function Group({
 
       {!collapsed &&
         (sortable ? (
-          <SortableBody group={{ ...group, tasks: shown }} rowProps={rowProps} />
+          <SortableBody
+            group={{ ...group, tasks: shown }}
+            rowProps={rowProps}
+            focusedTaskId={focusedTaskId}
+            onFocusTask={onFocusTask}
+          />
         ) : (
           <div>
             {shown.map((task) => (
-              <TaskRow key={task.id} task={task} {...rowProps} />
+              <TaskRow
+                key={task.id}
+                task={task}
+                {...rowProps}
+                focusedTaskId={focusedTaskId}
+                onFocusTask={onFocusTask}
+              />
             ))}
           </div>
         ))}
@@ -333,22 +407,24 @@ type RowProps = {
   onToggleSelect: (id: string) => void;
   onOpenTask: (id: string) => void;
   onUpdate: (taskId: string, patch: Record<string, unknown>) => void;
+  focusedTaskId: string | null;
+  onFocusTask: (id: string) => void;
 };
 
-function SortableBody({ group, rowProps }: { group: TaskGroup; rowProps: RowProps }) {
+function SortableBody({ group, rowProps, focusedTaskId, onFocusTask }: { group: TaskGroup; rowProps: RowProps; focusedTaskId: string | null; onFocusTask: (id: string) => void }) {
   const { setNodeRef } = useSortable({ id: group.id, data: { type: "column" } });
   return (
     <SortableContext items={group.tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
       <div ref={setNodeRef} className="min-h-[8px]">
         {group.tasks.map((task) => (
-          <SortableRow key={task.id} task={task} rowProps={rowProps} />
+          <SortableRow key={task.id} task={task} rowProps={rowProps} focusedTaskId={focusedTaskId} onFocusTask={onFocusTask} />
         ))}
       </div>
     </SortableContext>
   );
 }
 
-function SortableRow({ task, rowProps }: { task: TaskWithRelations; rowProps: RowProps }) {
+function SortableRow({ task, rowProps, focusedTaskId, onFocusTask }: { task: TaskWithRelations; rowProps: RowProps; focusedTaskId: string | null; onFocusTask: (id: string) => void }) {
   const { setNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({
     id: task.id,
     data: { type: "row" },
@@ -362,6 +438,8 @@ function SortableRow({ task, rowProps }: { task: TaskWithRelations; rowProps: Ro
       <TaskRow
         task={task}
         {...rowProps}
+        focusedTaskId={focusedTaskId}
+        onFocusTask={onFocusTask}
         handle={
           <button
             {...attributes}
@@ -388,6 +466,8 @@ function TaskRow({
   onOpenTask,
   onUpdate,
   handle,
+  focusedTaskId,
+  onFocusTask,
 }: {
   task: TaskWithRelations;
   statuses: StatusModel[];
@@ -398,6 +478,8 @@ function TaskRow({
   onOpenTask: (id: string) => void;
   onUpdate: (taskId: string, patch: Record<string, unknown>) => void;
   handle?: React.ReactNode;
+  focusedTaskId: string | null;
+  onFocusTask: (id: string) => void;
 }) {
   const isSelected = selected.has(task.id);
   const [expanded, setExpanded] = useState(false);
@@ -430,11 +512,13 @@ function TaskRow({
     <>
       <div
         className={cn(
-          "group grid cursor-pointer items-center border-t border-cu-border/60 px-3",
+          "group grid cursor-pointer items-center border-t border-cu-border/60 px-3 transition-colors",
           isSelected ? "bg-cu-purple-light hover:bg-cu-purple-light" : "hover:bg-cu-hover/60",
+          task.id === focusedTaskId && !isSelected ? "bg-cu-purple-light/50 ring-2 ring-cu-purple ring-inset" : "",
         )}
         style={gridStyle}
         onClick={() => !renaming && onOpenTask(task.id)}
+        data-task-id={task.id}
       >
         <div className="flex items-center gap-1.5 py-2">
           {handle && <span className="-ml-1 flex w-3 justify-center">{handle}</span>}
