@@ -524,3 +524,41 @@ model TaskDependency {
   @@index([blockerId])
   @@index([blockedId])
 }
+
+// ----------------------------------------------------------------------------
+// Docs (wiki/nested pages per space)
+// ----------------------------------------------------------------------------
+
+model Doc {
+  id        String   @id @default(cuid())
+  spaceId   String
+  title     String
+  position  Float    @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  space  Space     @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  pages  DocPage[]
+
+  @@index([spaceId])
+}
+
+model DocPage {
+  id         String   @id @default(cuid())
+  docId      String?  // null = root page in space
+  parentId   String?  // for nesting
+  spaceId    String   // denormalized for queries
+  title      String
+  content    String?  // rich text HTML
+  position   Float    @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  doc  Doc?  @relation(fields: [docId], references: [id], onDelete: Cascade)
+  parent DocPage?  @relation("DocPageChildren", fields: [parentId], references: [id], onDelete: Cascade)
+  children DocPage[]  @relation("DocPageChildren")
+
+  @@index([docId])
+  @@index([parentId])
+  @@index([spaceId])
+}
