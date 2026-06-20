@@ -21,15 +21,17 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Popover from "@radix-ui/react-popover";
-import { Plus, MessageSquare, GitBranch, ChevronsLeftRight, ChevronsRightLeft, Gauge } from "lucide-react";
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
+import { Plus, MessageSquare, GitBranch, ChevronsLeftRight, ChevronsRightLeft, Gauge, X, Trash2, Flag } from "lucide-react";
 import { cn, midpoint } from "@/lib/utils";
 import { apiSend } from "@/lib/api";
 import type { ListData, TaskWithRelations, StatusModel } from "@/lib/queries";
-import { useUpdateTask, useCreateTask } from "@/lib/hooks";
+import { useUpdateTask, useCreateTask, useBulk } from "@/lib/hooks";
 import { useWorkspace } from "@/components/workspace-context";
 import { groupTasks, type TaskGroup } from "@/lib/grouping";
 import type { GroupBy } from "@/lib/view-state";
 import type { Priority } from "@/lib/enums";
+import { PRIORITY_ORDER, PRIORITY_CONFIG } from "@/lib/constants";
 import { StatusCircle } from "@/components/menus/status-control";
 import { PriorityFlag, DueDate, TagChip } from "@/components/ui/primitives";
 import { AvatarStack } from "@/components/ui/avatar";
@@ -51,6 +53,17 @@ export function BoardView({
   const { workspace } = useWorkspace();
   const members = useMemo(() => workspace.members.map((m) => m.user), [workspace.members]);
   const update = useUpdateTask(list.id);
+  const bulk = useBulk(list.id);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  const toggleSelect = (id: string) =>
+    setSelected((prev) => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+  const clearSelect = () => setSelected(new Set());
 
   const groups = useMemo(
     () => groupTasks(tasks, groupBy, { statuses, members }),
@@ -171,12 +184,25 @@ export function BoardView({
                 status={groupBy === "status" ? statusById.get(group.id) : undefined}
                 onOpenTask={onOpenTask}
                 onCollapse={() => toggleCollapse(group.id)}
+                selected={selected}
+                onToggleSelect={toggleSelect}
               />
             ),
           )}
         </div>
         <DragOverlay>{activeTask ? <Card task={activeTask} overlay /> : null}</DragOverlay>
       </DndContext>
+      {selected.size > 0 && (
+        <BulkBar
+          count={selected.size}
+          statuses={statuses}
+          onSetStatus={(statusId) => bulk.mutate({ ids: [...selected], patch: { statusId } })}
+          onSetPriority={(priority) => bulk.mutate({ ids: [...selected], patch: { priority } })}
+          onSetAssignees={(assigneeIds) => bulk.mutate({ ids: [...selected], patch: { assigneeIds } })}
+          onDelete={() => { bulk.mutate({ ids: [...selected], delete: true }); clearSelect(); }}
+          onClear={clearSelect}
+        />
+      )}
     </div>
   );
 }
@@ -205,6 +231,8 @@ function Column({
   status,
   onOpenTask,
   onCollapse,
+  selected,
+  onToggleSelect,
 }: {
   group: TaskGroup;
   tasks: TaskWithRelations[];
@@ -213,6 +241,8 @@ function Column({
   status: StatusModel | undefined;
   onOpenTask: (id: string) => void;
   onCollapse: () => void;
+  selected: Set<string>;
+  onToggleSelect: (id: string) => void;
 }) {
   const create = useCreateTask(listId);
   const { setNodeRef } = useSortable({ id: group.id, data: { type: "column" } });
@@ -262,7 +292,7 @@ function Column({
           )}
         >
           {tasks.map((task) => (
-            <SortableCard key={task.id} task={task} onOpenTask={onOpenTask} />
+            <SortableCard key={task.id} task={task} onOpenTask={onOpenTask} selected={selected} onToggleSelect={onToggleSelect} />
           ))}
         </div>
       </SortableContext>
@@ -364,11 +394,13 @@ function WipEditor({ status, listId }: { status: StatusModel; listId: string }) 
   );
 }
 
-function SortableCard({ task, onOpenTask }: { task: TaskWithRelations; onOpenTask: (id: string) => void }) {
+function SortableCard({ task, onOpenTask, selected, onToggleSelect }: { task: TaskWithRelations; onOpenTask: (id: string) => void; selected: Set<string>; onToggleSelect: (id: string) => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
     data: { type: "card" },
   });
+  const isSelected = selected.has(task.id);
+
   return (
     <div
       ref={setNodeRef}
@@ -378,20 +410,32 @@ function SortableCard({ task, onOpenTask }: { task: TaskWithRelations; onOpenTas
       {...listeners}
       onClick={() => onOpenTask(task.id)}
     >
-      <Card task={task} />
+      <Card task={task} isSelected={isSelected} onToggleSelect={() => onToggleSelect(task.id)} />
     </div>
   );
 }
 
-function Card({ task, overlay }: { task: TaskWithRelations; overlay?: boolean }) {
+function Card({ task, isSelected, onToggleSelect, overlay }: { task: TaskWithRelations; isSelected?: boolean; onToggleSelect?: () => void; overlay?: boolean }) {
   return (
     <div
       className={cn(
         "cursor-pointer rounded-lg border border-cu-border bg-cu-panel p-2.5 shadow-sm hover:border-cu-border-strong",
+        isSelected && "border-cu-purple bg-cu-purple-light/30",
         overlay && "rotate-2 shadow-lg",
       )}
     >
       <div className="flex items-start gap-1.5">
+        {onToggleSelect && (
+          <span className="mt-0.5 flex-shrink-0" onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}>
+            <input
+              type="checkbox"
+              checked={isSelected}
+              readOnly
+              className="h-3.5 w-3.5 cursor-pointer accent-[var(--cu-purple)]"
+            />
+          </span>
+        )}
+        {!onToggleSelect && <span className="mt-0.5 w-4" />}
         <span className="mt-0.5">
           <StatusCircle status={task.status} size={14} />
         </span>
