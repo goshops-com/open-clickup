@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { taskReturnPath } from "@/lib/task-return-path";
 
 export default function LoginPage() {
   const [mode, setMode] = useState<"login" | "signup">("login");
@@ -27,7 +28,8 @@ export default function LoginPage() {
         throw new Error(data.error || "Something went wrong");
       }
       // hard navigation so the session cookie is picked up everywhere
-      window.location.href = "/";
+      const next = new URLSearchParams(window.location.search).get("next");
+      window.location.href = taskReturnPath(next) ?? "/";
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed");
       setBusy(false);

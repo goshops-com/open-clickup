@@ -4,11 +4,15 @@ import type { ListData, TaskWithRelations } from "../lib/queries";
 const EMAIL = "santiago@clickuppp.dev";
 const PASSWORD = "password";
 
-async function login(page: Page) {
-  await page.goto("/login");
+async function submitLogin(page: Page) {
   await page.getByPlaceholder("you@company.com").fill(EMAIL);
   await page.locator('input[type="password"]').fill(PASSWORD);
   await page.getByRole("button", { name: "Log In" }).click();
+}
+
+async function login(page: Page) {
+  await page.goto("/login");
+  await submitLogin(page);
   // after login the app lands on Home ("My Work")
   await page.waitForURL(/\/home/);
 }
@@ -160,4 +164,23 @@ test("copies a task link from List and task details, with a manual fallback", as
   expect(await input.evaluate((el: HTMLInputElement) => [el.selectionStart, el.selectionEnd])).toEqual([0, link.length]);
   await fallback.getByRole("button", { name: "Done" }).click();
   await expect(taskActions).toBeFocused();
+});
+
+test("opens the shared task after signing in", async ({ page, context }) => {
+  await login(page);
+  await page.locator("aside").getByText("Backlog", { exact: true }).click();
+  await page.waitForURL(/\/l\//);
+  const { pathname } = new URL(page.url());
+  const response = await page.request.get(`/api/lists/${pathname.split("/").pop()}`);
+  await expect(response).toBeOK();
+  const { tasks }: ListData = await response.json();
+  const task = tasks.find((item) => item.name === "Mobile app MVP scoping")!;
+  const link = `${pathname}?task=${task.id}`;
+
+  await context.clearCookies();
+  await page.goto(link);
+  await expect(page).toHaveURL(/\/login\?next=/);
+  await submitLogin(page);
+  await expect(page).toHaveURL(new URL(link, page.url()).href);
+  await expect(page.getByRole("dialog", { name: "Task details" }).getByPlaceholder("Task name")).toHaveValue(task.name);
 });
