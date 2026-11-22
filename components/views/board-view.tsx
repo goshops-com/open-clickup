@@ -25,7 +25,7 @@ import { Plus, MessageSquare, GitBranch, ChevronsLeftRight, ChevronsRightLeft, G
 import { cn, midpoint } from "@/lib/utils";
 import { apiSend } from "@/lib/api";
 import type { ListData, TaskWithRelations, StatusModel } from "@/lib/queries";
-import { useUpdateTask, useCreateTask } from "@/lib/hooks";
+import { useUpdateTask, useCreateTask, useBulk } from "@/lib/hooks";
 import { useWorkspace } from "@/components/workspace-context";
 import { groupTasks, type TaskGroup } from "@/lib/grouping";
 import type { GroupBy } from "@/lib/view-state";
@@ -33,6 +33,7 @@ import type { Priority } from "@/lib/enums";
 import { StatusCircle } from "@/components/menus/status-control";
 import { PriorityFlag, DueDate, TagChip } from "@/components/ui/primitives";
 import { AvatarStack } from "@/components/ui/avatar";
+import { BulkBar } from "@/components/views/bulk-bar";
 
 type Columns = Record<string, TaskWithRelations[]>;
 
@@ -48,9 +49,12 @@ export function BoardView({
   const { list, tasks } = data;
   const statuses = list.statuses;
   const firstStatusId = statuses[0]?.id;
-  const { workspace } = useWorkspace();
+  const { workspace, currentUser } = useWorkspace();
   const members = useMemo(() => workspace.members.map((m) => m.user), [workspace.members]);
+  const role = workspace.members.find((m) => m.user.id === currentUser.id)?.role;
+  const canSelect = role === "OWNER" || role === "ADMIN" || role === "MEMBER";
   const update = useUpdateTask(list.id);
+  const bulk = useBulk(list.id);
 
   const groups = useMemo(
     () => groupTasks(tasks, groupBy, { statuses, members }),
@@ -60,7 +64,19 @@ export function BoardView({
   const [columns, setColumns] = useState<Columns>(() => fromGroups(groups));
   const [activeId, setActiveId] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  // Don't apply an action to tasks excluded by the current filters or removed from the list.
+  const selectedIds = canSelect ? tasks.filter((task) => selected.has(task.id)).map((task) => task.id) : [];
   const statusById = useMemo(() => new Map(statuses.map((s) => [s.id, s])), [statuses]);
+
+  function toggleSelect(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   function toggleCollapse(id: string) {
     setCollapsed((prev) => {
@@ -169,6 +185,8 @@ export function BoardView({
                 listId={list.id}
                 firstStatusId={firstStatusId}
                 status={groupBy === "status" ? statusById.get(group.id) : undefined}
+                selected={selected}
+                onToggleSelect={canSelect ? toggleSelect : undefined}
                 onOpenTask={onOpenTask}
                 onCollapse={() => toggleCollapse(group.id)}
               />
@@ -177,6 +195,25 @@ export function BoardView({
         </div>
         <DragOverlay>{activeTask ? <Card task={activeTask} overlay /> : null}</DragOverlay>
       </DndContext>
+      {selectedIds.length > 0 && (
+        <BulkBar
+          count={selectedIds.length}
+          statuses={statuses}
+          onSetStatus={(statusId) => bulk.mutate({ ids: selectedIds, patch: { statusId } })}
+          onSetPriority={(priority) => bulk.mutate({ ids: selectedIds, patch: { priority } })}
+          onSetAssignees={(assigneeIds) => bulk.mutate({ ids: selectedIds, patch: { assigneeIds } })}
+          onDelete={() => bulk.mutate({ ids: selectedIds, delete: true })}
+          onClear={() => {
+            setSelected(new Set());
+            bulk.reset();
+          }}
+        />
+      )}
+      {bulk.isError && (
+        <p role="alert" className="fixed bottom-18 left-1/2 z-40 -translate-x-1/2 rounded-lg border border-cu-border bg-cu-panel px-3 py-2 text-sm text-cu-urgent shadow-sm">
+          Could not update the selected tasks. Try again.
+        </p>
+      )}
     </div>
   );
 }
@@ -203,6 +240,8 @@ function Column({
   listId,
   firstStatusId,
   status,
+  selected,
+  onToggleSelect,
   onOpenTask,
   onCollapse,
 }: {
@@ -211,6 +250,8 @@ function Column({
   listId: string;
   firstStatusId: string | undefined;
   status: StatusModel | undefined;
+  selected: Set<string>;
+  onToggleSelect?: (id: string) => void;
   onOpenTask: (id: string) => void;
   onCollapse: () => void;
 }) {
@@ -262,7 +303,13 @@ function Column({
           )}
         >
           {tasks.map((task) => (
-            <SortableCard key={task.id} task={task} onOpenTask={onOpenTask} />
+            <SortableCard
+              key={task.id}
+              task={task}
+              selected={onToggleSelect !== undefined && selected.has(task.id)}
+              onToggleSelect={onToggleSelect}
+              onOpenTask={onOpenTask}
+            />
           ))}
         </div>
       </SortableContext>
@@ -364,7 +411,12 @@ function WipEditor({ status, listId }: { status: StatusModel; listId: string }) 
   );
 }
 
-function SortableCard({ task, onOpenTask }: { task: TaskWithRelations; onOpenTask: (id: string) => void }) {
+function SortableCard({ task, selected, onToggleSelect, onOpenTask }: {
+  task: TaskWithRelations;
+  selected: boolean;
+  onToggleSelect?: (id: string) => void;
+  onOpenTask: (id: string) => void;
+}) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
     data: { type: "card" },
@@ -373,25 +425,53 @@ function SortableCard({ task, onOpenTask }: { task: TaskWithRelations; onOpenTas
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={cn(isDragging && "opacity-40")}
-      {...attributes}
-      {...listeners}
-      onClick={() => onOpenTask(task.id)}
+      className={cn("group/card relative", isDragging && "opacity-40")}
     >
-      <Card task={task} />
+      <div
+        {...attributes}
+        {...listeners}
+        onClick={() => onOpenTask(task.id)}
+        onKeyDown={(e) => {
+          if (e.key !== "Enter" && e.key !== " ") return;
+          e.preventDefault();
+          onOpenTask(task.id);
+        }}
+      >
+        <Card task={task} selectable={onToggleSelect !== undefined} selected={selected} />
+      </div>
+      {onToggleSelect && (
+        <label className={cn(
+          "absolute right-0 top-0 grid size-9 cursor-pointer place-items-center motion-safe:transition-opacity",
+          !selected && "[@media(hover:hover)]:opacity-0 group-hover/card:opacity-100 focus-within:opacity-100",
+        )}>
+          <input
+            type="checkbox"
+            aria-label={`Select ${task.name}`}
+            checked={selected}
+            onChange={() => onToggleSelect(task.id)}
+            className="size-4 cursor-pointer accent-cu-purple focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cu-purple"
+          />
+        </label>
+      )}
     </div>
   );
 }
 
-function Card({ task, overlay }: { task: TaskWithRelations; overlay?: boolean }) {
+function Card({ task, overlay, selectable, selected }: {
+  task: TaskWithRelations;
+  overlay?: boolean;
+  selectable?: boolean;
+  selected?: boolean;
+}) {
   return (
     <div
       className={cn(
         "cursor-pointer rounded-lg border border-cu-border bg-cu-panel p-2.5 shadow-sm hover:border-cu-border-strong",
+        selected && "ring-1 ring-inset ring-cu-purple",
         overlay && "rotate-2 shadow-lg",
       )}
     >
-      <div className="flex items-start gap-1.5">
+      <div className={cn("flex items-start gap-1.5", selectable && "pr-6")}>
         <span className="mt-0.5">
           <StatusCircle status={task.status} size={14} />
         </span>
