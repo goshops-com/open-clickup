@@ -70,6 +70,7 @@ export function ListPage({ listId }: { listId: string }) {
   const taskParam = searchParams.get("task");
   const [activeViewId, setActiveViewId] = useState<string | null>(null);
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
+  const returnTaskFocus = useRef<HTMLElement | null>(null);
   const [statusMgr, setStatusMgr] = useState(false);
   const [templatePicker, setTemplatePicker] = useState(false);
   const [vs, setVs] = useState<ViewState>(EMPTY_VIEW_STATE);
@@ -261,7 +262,10 @@ export function ListPage({ listId }: { listId: string }) {
         )
       ) : (
         <>
-          {activeView?.type === "LIST" && <ListView data={shownData!} onOpenTask={setOpenTaskId} groupBy={vs.groupBy} />}
+          {activeView?.type === "LIST" && <ListView data={shownData!} onOpenTask={(id, trigger) => {
+            returnTaskFocus.current = trigger ?? null;
+            setOpenTaskId(id);
+          }} groupBy={vs.groupBy} />}
           {activeView?.type === "BOARD" && <BoardView data={shownData!} onOpenTask={setOpenTaskId} groupBy={vs.groupBy} />}
           {activeView?.type === "CALENDAR" && <CalendarView data={shownData!} onOpenTask={setOpenTaskId} />}
           {activeView?.type === "GANTT" && <GanttView data={shownData!} onOpenTask={setOpenTaskId} />}
@@ -270,7 +274,13 @@ export function ListPage({ listId }: { listId: string }) {
       )}
 
       {openTaskId && (
-        <TaskModal taskId={openTaskId} listId={listId} onClose={closeTask} onOpenTask={setOpenTaskId} />
+        <TaskModal taskId={openTaskId} listId={listId} onClose={closeTask} onOpenTask={setOpenTaskId} onCloseAutoFocus={(event) => {
+          const trigger = returnTaskFocus.current;
+          returnTaskFocus.current = null;
+          if (!trigger?.isConnected) return;
+          event.preventDefault();
+          trigger.focus();
+        }} />
       )}
       {statusMgr && (
         <StatusManager listId={listId} statuses={data.list.statuses} onClose={() => setStatusMgr(false)} />

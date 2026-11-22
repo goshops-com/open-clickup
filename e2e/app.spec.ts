@@ -184,3 +184,53 @@ test("opens the shared task after signing in", async ({ page, context }) => {
   await expect(page).toHaveURL(new URL(link, page.url()).href);
   await expect(page.getByRole("dialog", { name: "Task details" }).getByPlaceholder("Task name")).toHaveValue(task.name);
 });
+
+test("navigates, selects, and opens tasks with List shortcuts", async ({ page }) => {
+  await login(page);
+  await page.locator("aside").getByText("Backlog", { exact: true }).click();
+  const list = page.getByRole("region", { name: "Task list" });
+  const first = list.getByRole("button", { name: "Mobile app MVP scoping", exact: true });
+  const second = list.getByRole("button", { name: "Migrate to Postgres 16", exact: true });
+  const selection = list.getByRole("checkbox", { name: "Select Migrate to Postgres 16", exact: true });
+
+  await list.focus();
+  await page.keyboard.press("j");
+  await expect(first).toBeFocused();
+  await page.keyboard.press("j");
+  await expect(second).toBeFocused();
+  await page.keyboard.press("x");
+  await expect(selection).toBeChecked();
+  await page.keyboard.press("x");
+  await expect(selection).not.toBeChecked();
+  await page.keyboard.press("k");
+  await expect(first).toBeFocused();
+
+  const details = page.getByRole("dialog", { name: "Task details" });
+  await page.keyboard.press("e");
+  await expect(details.getByPlaceholder("Task name")).toHaveValue("Mobile app MVP scoping");
+  await page.keyboard.press("Escape");
+  await expect(first).toBeFocused();
+  await page.keyboard.press("j");
+  await page.keyboard.press("Enter");
+  await expect(details.getByPlaceholder("Task name")).toHaveValue("Migrate to Postgres 16");
+  await page.keyboard.press("Escape");
+  await expect(second).toBeFocused();
+
+  await second.dblclick();
+  const editor = list.getByRole("textbox");
+  await expect(editor).toBeFocused();
+  await editor.fill("");
+  await page.keyboard.type("jkxe");
+  await expect(editor).toHaveValue("jkxe");
+  await expect(selection).not.toBeChecked();
+  await page.keyboard.press("Escape");
+
+  await list.getByRole("button", { name: "Collapse TO DO", exact: true }).click();
+  await list.focus();
+  await page.keyboard.press("j");
+  await expect(list).toBeFocused();
+  await expect(first).toHaveCount(0);
+
+  await page.keyboard.press("?");
+  await expect(page.getByRole("dialog", { name: "Keyboard shortcuts" }).getByText("Focus the next task")).toBeVisible();
+});
