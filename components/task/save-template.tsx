@@ -1,14 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import * as Dialog from "@radix-ui/react-dialog";
-import { Ellipsis, BookmarkPlus, Check, Copy, FolderInput } from "lucide-react";
+import { Ellipsis, BookmarkPlus, Check, Copy, FolderInput, Link2 } from "lucide-react";
 import { apiSend } from "@/lib/api";
 import { useSaveTemplate, useDuplicateTask } from "@/lib/hooks";
 import { useWorkspace } from "@/components/workspace-context";
+import { useCopyTaskLink } from "@/components/task/copy-task-link";
 
 export function TaskMenu({
   taskId,
@@ -24,6 +25,8 @@ export function TaskMenu({
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(defaultName);
   const [saved, setSaved] = useState(false);
+  const { copyLink, feedback } = useCopyTaskLink();
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const save = useSaveTemplate();
   const duplicate = useDuplicateTask(listId);
   const router = useRouter();
@@ -56,7 +59,7 @@ export function TaskMenu({
     <>
       <DropdownMenu.Root>
         <DropdownMenu.Trigger asChild>
-          <button className="rounded p-1.5 text-cu-text-tertiary hover:bg-cu-hover" title="More">
+          <button ref={triggerRef} className="rounded p-1.5 text-cu-text-tertiary hover:bg-cu-hover" aria-label="Task actions">
             <Ellipsis className="h-4 w-4" />
           </button>
         </DropdownMenu.Trigger>
@@ -66,6 +69,12 @@ export function TaskMenu({
             align="end"
             className="z-50 min-w-[180px] rounded-lg border border-cu-border bg-cu-panel p-1 shadow-lg"
           >
+            <DropdownMenu.Item
+              onSelect={() => copyLink(listId, taskId, triggerRef.current)}
+              className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-[13px] outline-none hover:bg-cu-hover focus:bg-cu-hover"
+            >
+              <Link2 className="h-4 w-4" /> Copy link
+            </DropdownMenu.Item>
             <DropdownMenu.Item
               onSelect={() =>
                 duplicate.mutate(taskId, { onSuccess: (copy) => onOpenTask?.(copy.id) })
@@ -109,6 +118,7 @@ export function TaskMenu({
           </DropdownMenu.Content>
         </DropdownMenu.Portal>
       </DropdownMenu.Root>
+      {feedback}
 
       <Dialog.Root open={open} onOpenChange={setOpen}>
         <Dialog.Portal>

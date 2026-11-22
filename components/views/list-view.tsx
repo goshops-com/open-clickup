@@ -12,6 +12,7 @@ import {
   Pencil,
   Maximize2,
   Copy,
+  Link2,
   GripVertical,
 } from "lucide-react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
@@ -41,6 +42,7 @@ import { TagChip } from "@/components/ui/primitives";
 import { CustomFieldControl } from "@/components/views/custom-field-control";
 import { AddFieldDialog } from "@/components/views/add-field-dialog";
 import { BulkBar } from "@/components/views/bulk-bar";
+import { useCopyTaskLink } from "@/components/task/copy-task-link";
 
 /** Cap rendered rows per group; "Show more" reveals the next page. Keeps the DOM bounded for large lists. */
 const PAGE_SIZE = 50;
@@ -61,6 +63,7 @@ export function ListView({
   const members = useMemo(() => workspace.members.map((m) => m.user), [workspace.members]);
   const update = useUpdateTask(list.id);
   const bulk = useBulk(list.id);
+  const { copyLink, feedback: copyLinkFeedback } = useCopyTaskLink();
   const [addingField, setAddingField] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
@@ -171,6 +174,7 @@ export function ListView({
           selected={selected}
           onToggleSelect={toggleSelect}
           onOpenTask={onOpenTask}
+          onCopyLink={copyLink}
           onUpdate={(taskId, patch) => update.mutate({ taskId, patch })}
         />
       ))}
@@ -188,6 +192,7 @@ export function ListView({
           body
         )}
       </div>
+      {copyLinkFeedback}
       {addingField && <AddFieldDialog listId={list.id} onClose={() => setAddingField(false)} />}
       {selected.size > 0 && (
         <BulkBar
@@ -249,6 +254,7 @@ function Group({
   selected,
   onToggleSelect,
   onOpenTask,
+  onCopyLink,
   onUpdate,
 }: {
   group: TaskGroup;
@@ -261,13 +267,14 @@ function Group({
   selected: Set<string>;
   onToggleSelect: (id: string) => void;
   onOpenTask: (id: string) => void;
-  onUpdate: (taskId: string, patch: Record<string, unknown>) => void;
+  onUpdate: RowProps["onUpdate"];
+  onCopyLink: RowProps["onCopyLink"];
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const [adding, setAdding] = useState(false);
   const [visible, setVisible] = useState(PAGE_SIZE);
 
-  const rowProps = { statuses, customFields, gridStyle, selected, onToggleSelect, onOpenTask, onUpdate };
+  const rowProps = { statuses, customFields, gridStyle, selected, onToggleSelect, onOpenTask, onCopyLink, onUpdate };
   const shown = group.tasks.slice(0, visible);
   const hidden = group.tasks.length - shown.length;
 
@@ -332,6 +339,7 @@ type RowProps = {
   selected: Set<string>;
   onToggleSelect: (id: string) => void;
   onOpenTask: (id: string) => void;
+  onCopyLink: (listId: string, taskId: string, trigger: HTMLButtonElement | null) => void;
   onUpdate: (taskId: string, patch: Record<string, unknown>) => void;
 };
 
@@ -386,17 +394,11 @@ function TaskRow({
   selected,
   onToggleSelect,
   onOpenTask,
+  onCopyLink,
   onUpdate,
   handle,
-}: {
+}: RowProps & {
   task: TaskWithRelations;
-  statuses: StatusModel[];
-  customFields: CustomFieldWithOptions[];
-  gridStyle: React.CSSProperties;
-  selected: Set<string>;
-  onToggleSelect: (id: string) => void;
-  onOpenTask: (id: string) => void;
-  onUpdate: (taskId: string, patch: Record<string, unknown>) => void;
   handle?: React.ReactNode;
 }) {
   const isSelected = selected.has(task.id);
@@ -406,6 +408,7 @@ function TaskRow({
   const setField = useSetFieldValue(task.listId);
   const del = useDeleteTask(task.listId);
   const duplicate = useDuplicateTask(task.listId);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const hasSubtasks = task.subtasks.length > 0;
 
   // single click on the name opens the task; double click renames it
@@ -530,13 +533,14 @@ function TaskRow({
         <div className="flex justify-center py-2" onClick={(e) => e.stopPropagation()}>
           <DropdownMenu.Root>
             <DropdownMenu.Trigger asChild>
-              <button className="hidden rounded p-1 text-cu-text-tertiary hover:bg-cu-hover hover:text-cu-text group-hover:block">
+              <button ref={triggerRef} aria-label={`Actions for ${task.name}`} className="rounded p-1 text-cu-text-tertiary opacity-0 hover:bg-cu-hover hover:text-cu-text focus-visible:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100">
                 <Ellipsis className="h-4 w-4" />
               </button>
             </DropdownMenu.Trigger>
             <DropdownMenu.Portal>
               <DropdownMenu.Content sideOffset={4} align="end" className="z-50 min-w-[150px] rounded-lg border border-cu-border bg-cu-panel p-1 shadow-lg">
                 <RowMenuItem icon={<Maximize2 className="h-4 w-4" />} label="Open" onSelect={() => onOpenTask(task.id)} />
+                <RowMenuItem icon={<Link2 className="h-4 w-4" />} label="Copy link" onSelect={() => onCopyLink(task.listId, task.id, triggerRef.current)} />
                 <RowMenuItem icon={<Pencil className="h-4 w-4" />} label="Rename" onSelect={() => setRenaming(true)} />
                 <RowMenuItem icon={<Copy className="h-4 w-4" />} label="Duplicate" onSelect={() => duplicate.mutate(task.id)} />
                 <RowMenuItem icon={<Trash2 className="h-4 w-4" />} label="Delete" danger onSelect={() => del.mutate(task.id)} />

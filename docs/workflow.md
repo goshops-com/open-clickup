@@ -22,8 +22,10 @@ gh issue list --label roadmap
 gh issue list --label "good first issue"
 ```
 
-Comment on / assign the issue you take. New ideas → file an issue, don't build ad
-hoc.
+For a new feature or parity gap, first search for an existing issue. If none
+exists, run `gh issue create --label roadmap` and include the reference behavior
+and acceptance criteria. Comment on or assign the issue you take, then link it
+from the PR after pushing. Don't create duplicates for work already on the roadmap.
 
 ## The end-to-end feature recipe
 
