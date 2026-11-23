@@ -324,6 +324,21 @@ export function useDeleteTask(listId: string | undefined) {
   });
 }
 
+export function useImportCsv(listId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (csv: string) =>
+      apiSend<{ created: number; statusesCreated: number; tagsCreated: number; fieldsCreated: number; optionsCreated: number }>(
+        `/api/lists/${listId}/import`,
+        "POST",
+        { csv },
+      ),
+    onSettled: () => {
+      if (listId) qc.invalidateQueries({ queryKey: ["list", listId] });
+    },
+  });
+}
+
 function applyOptimistic(task: TaskWithRelations, patch: TaskPatch): TaskWithRelations {
   return {
     ...task,
