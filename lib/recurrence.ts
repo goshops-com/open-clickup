@@ -71,24 +71,40 @@ function normalizeWeekdays(wds?: number[]): number[] {
   return uniq.sort((a, b) => a - b);
 }
 
-function isValidAdvancedRule(o: any): o is AdvancedRecurrenceRule {
-  if (!o || typeof o !== "object") return false;
-  if (!["DAILY", "WEEKLY", "MONTHLY"].includes(o.frequency)) return false;
-  if (typeof o.interval !== "number" || o.interval < 1) return false;
-  if (!["on_schedule", "on_completion"].includes(o.mode)) return false;
-  if (!o.end || typeof o.end.type !== "string") return false;
-  if (o.end.type === "after") {
-    if (typeof o.end.count !== "number" || o.end.count < 1) return false;
-  }
-  if (o.end.type === "until") {
-    if (typeof o.end.date !== "string" || isNaN(Date.parse(o.end.date))) return false;
-  }
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function isPositiveInteger(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 1;
+}
+
+function isWeekday(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= 6;
+}
+
+function isValidAdvancedRule(o: unknown): o is AdvancedRecurrenceRule {
+  if (!isRecord(o)) return false;
+  if (o.frequency !== "DAILY" && o.frequency !== "WEEKLY" && o.frequency !== "MONTHLY") return false;
+  if (!isPositiveInteger(o.interval)) return false;
+  if (o.mode !== "on_schedule" && o.mode !== "on_completion") return false;
+  const end = o.end;
+  if (!isRecord(end)) return false;
+  if (end.type === "after") {
+    if (!isPositiveInteger(end.count)) return false;
+  } else if (end.type === "until") {
+    if (typeof end.date !== "string" || !Number.isFinite(Date.parse(end.date))) return false;
+  } else if (end.type !== "never") return false;
+  if (o.occurrence !== undefined && !isPositiveInteger(o.occurrence)) return false;
+  if (o.weekdays !== undefined && (!Array.isArray(o.weekdays) || !o.weekdays.every(isWeekday))) return false;
+  if (o.monthlyMode !== undefined && o.monthlyMode !== "dayOfMonth" && o.monthlyMode !== "nthWeekday") return false;
+  if (o.weekday !== undefined && !isWeekday(o.weekday)) return false;
+  if (o.nth !== undefined && (typeof o.nth !== "number" || ![1, 2, 3, 4, 5, -1].includes(o.nth))) return false;
   if (o.frequency === "WEEKLY") {
     if (!Array.isArray(o.weekdays) || o.weekdays.length === 0) return false;
   }
   if (o.frequency === "MONTHLY" && o.monthlyMode === "nthWeekday") {
-    if (typeof o.weekday !== "number" || o.weekday < 0 || o.weekday > 6) return false;
-    if (typeof o.nth !== "number" || ![1, 2, 3, 4, 5, -1].includes(o.nth)) return false;
+    if (o.weekday === undefined || o.nth === undefined) return false;
   }
   return true;
 }
@@ -103,7 +119,7 @@ export function parseRecurrence(raw: string | null | undefined): ParsedRecurrenc
   // Try JSON
   if (trimmed.startsWith("{")) {
     try {
-      const obj = JSON.parse(trimmed);
+      const obj: unknown = JSON.parse(trimmed);
       if (isValidAdvancedRule(obj)) {
         // normalize
         const rule: AdvancedRecurrenceRule = {
