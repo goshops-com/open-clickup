@@ -122,3 +122,42 @@ test("selects cards across Board columns and applies a bulk action", async ({ pa
     for (const task of tasks) await expect(await page.request.delete(`/api/tasks/${task.id}`)).toBeOK();
   }
 });
+
+test("copies a task link from List and task details, with a manual fallback", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await login(page);
+  await page.locator("aside").getByText("Backlog", { exact: true }).click();
+
+  const taskName = "Mobile app MVP scoping";
+  const rowActions = page.getByRole("button", { name: `Actions for ${taskName}`, exact: true });
+  await rowActions.focus();
+  await page.keyboard.press("Enter");
+  await page.getByRole("menuitem", { name: "Copy link", exact: true }).click();
+  await expect(page.getByText("Task link copied", { exact: true })).toBeVisible();
+  const link = await page.evaluate(() => navigator.clipboard.readText());
+  expect(new URL(link).searchParams.get("task")).toBeTruthy();
+
+  const tab = await context.newPage();
+  await tab.goto(link);
+  const details = tab.getByRole("dialog", { name: "Task details" });
+  await expect(details.getByPlaceholder("Task name")).toHaveValue(taskName);
+  const taskActions = details.getByRole("button", { name: "Task actions" });
+  await tab.evaluate(() => navigator.clipboard.writeText(""));
+  await taskActions.click();
+  await tab.getByRole("menuitem", { name: "Copy link", exact: true }).click();
+  await expect(details.getByText("Task link copied")).toBeVisible();
+  expect(await tab.evaluate(() => navigator.clipboard.readText())).toBe(link);
+
+  await tab.evaluate(() => {
+    Object.defineProperty(navigator, "clipboard", { value: undefined });
+  });
+  await taskActions.click();
+  await tab.getByRole("menuitem", { name: "Copy link", exact: true }).click();
+  const fallback = tab.getByRole("dialog", { name: "Copy task link" });
+  const input = fallback.getByRole("textbox", { name: "Task link" });
+  await expect(input).toHaveValue(link);
+  await expect(input).toBeFocused();
+  expect(await input.evaluate((el: HTMLInputElement) => [el.selectionStart, el.selectionEnd])).toEqual([0, link.length]);
+  await fallback.getByRole("button", { name: "Done" }).click();
+  await expect(taskActions).toBeFocused();
+});
