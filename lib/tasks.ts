@@ -3,7 +3,14 @@ import { Priority, Prisma } from "@/lib/generated/prisma/client";
 import { taskInclude } from "@/lib/queries";
 import { publish } from "@/lib/events";
 import { createNotifications } from "@/lib/notifications";
-import { nextOccurrence, type Recurrence } from "@/lib/recurrence";
+import {
+  nextOccurrence,
+  type Recurrence,
+  parseRecurrence,
+  getNextAdvancedOccurrence,
+  shouldStopRecurrence,
+  serializeRecurrence,
+} from "@/lib/recurrence";
 
 export async function createTask(input: {
   listId: string;
@@ -203,10 +210,55 @@ type RecurringSource = {
 
 /** Clone a completed recurring task as a fresh open task with advanced dates. */
 async function spawnNextOccurrence(src: RecurringSource, actorId?: string) {
-  const rule = src.recurrence as Recurrence;
-  const base = src.dueDate ?? new Date();
-  const dueDate = nextOccurrence(base, rule);
-  const startDate = src.startDate ? nextOccurrence(src.startDate, rule) : null;
+  if (!src.recurrence) return;
+  const parsed = parseRecurrence(src.recurrence);
+
+  let dueDate: Date | null = null;
+  let startDate: Date | null = null;
+  let nextRecurrenceStr: string | null = src.recurrence;
+
+  if (parsed.kind === "none") return;
+
+  if (parsed.kind === "legacy") {
+    const base = src.dueDate ?? new Date();
+    dueDate = nextOccurrence(base, parsed.rule);
+    startDate = src.startDate ? nextOccurrence(src.startDate, parsed.rule) : null;
+  } else if (parsed.kind === "advanced") {
+    const rule = parsed.rule;
+    // stop if already at or beyond end count
+    if (shouldStopRecurrence(rule, null)) return;
+
+    const now = new Date();
+    const dueBase = rule.mode === "on_completion" ? now : (src.dueDate ?? now);
+    const nextDue = getNextAdvancedOccurrence(dueBase, rule);
+    if (!nextDue) return;
+    if (shouldStopRecurrence(rule, nextDue)) return;
+
+    dueDate = nextDue;
+
+    if (src.startDate) {
+      if (src.dueDate) {
+        // preserve gap between start and due
+        const gap = src.dueDate.getTime() - src.startDate.getTime();
+        if (gap >= 0) {
+          startDate = new Date(nextDue.getTime() - gap);
+        } else {
+          const startBase = rule.mode === "on_completion" ? now : src.startDate;
+          startDate = getNextAdvancedOccurrence(startBase, rule);
+        }
+      } else {
+        const startBase = rule.mode === "on_completion" ? now : src.startDate;
+        startDate = getNextAdvancedOccurrence(startBase, rule);
+      }
+    }
+
+    // increment occurrence for next task
+    const nextRule = {
+      ...rule,
+      occurrence: (rule.occurrence ?? 1) + 1,
+    };
+    nextRecurrenceStr = serializeRecurrence(nextRule);
+  }
 
   const firstStatus = await prisma.status.findFirst({
     where: { listId: src.listId },
@@ -231,7 +283,7 @@ async function spawnNextOccurrence(src: RecurringSource, actorId?: string) {
       startDate,
       dueDate,
       timeEstimate: src.timeEstimate,
-      recurrence: src.recurrence,
+      recurrence: nextRecurrenceStr,
       createdById: actorId,
       assignees: src.assignees.length
         ? { create: src.assignees.map((a) => ({ userId: a.userId })) }
