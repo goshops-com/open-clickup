@@ -4,6 +4,7 @@ import { requireRole } from "@/lib/permissions";
 import { taskInclude } from "@/lib/queries";
 import { ApiError, route } from "@/lib/api-helpers";
 import { publish } from "@/lib/events";
+import { parseRecurrence, serializeRecurrence } from "@/lib/recurrence";
 
 type Ctx = { params: Promise<{ taskId: string }> };
 
@@ -27,6 +28,15 @@ export const POST = route(async (_req, { params }: Ctx) => {
     orderBy: { position: "desc" },
   });
 
+  // reset occurrence count for advanced recurrence on duplication
+  let recurrenceForCopy = src.recurrence;
+  if (recurrenceForCopy) {
+    const parsed = parseRecurrence(recurrenceForCopy);
+    if (parsed.kind === "advanced") {
+      recurrenceForCopy = serializeRecurrence({ ...parsed.rule, occurrence: 1 });
+    }
+  }
+
   const copy = await prisma.task.create({
     data: {
       listId: src.listId,
@@ -39,7 +49,7 @@ export const POST = route(async (_req, { params }: Ctx) => {
       startDate: src.startDate,
       dueDate: src.dueDate,
       timeEstimate: src.timeEstimate,
-      recurrence: src.recurrence,
+      recurrence: recurrenceForCopy,
       createdById: user.id,
       assignees: { create: src.assignees.map((a) => ({ userId: a.userId })) },
       tags: { create: src.tags.map((t) => ({ tagId: t.tagId })) },
