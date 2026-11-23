@@ -12,8 +12,8 @@ const schema = z.object({
 
 export const POST = route(async (req, { params }: Ctx) => {
   const { listId } = await params;
-  const { user } = await requireRole("MEMBER");
+  const { user, workspaceId } = await requireRole("MEMBER");
   const body = await readJson(req, schema);
-  const result = await importTasksFromCsv({ listId, csvContent: body.csv, actorId: user.id });
+  const result = await importTasksFromCsv({ listId, workspaceId, csvContent: body.csv, actorId: user.id });
   return NextResponse.json(result, { status: 201 });
 });

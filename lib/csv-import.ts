@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import type { Prisma } from "@/lib/generated/prisma/client";
 import { ApiError } from "@/lib/api-helpers";
 import { parseCsvWithHeader, deescapeFormula } from "@/lib/list-csv";
 import { StatusType, CustomFieldType } from "@/lib/enums";
@@ -64,17 +65,26 @@ function colorFromStringFallback(s: string): string {
   return palette[hash % palette.length];
 }
 
-export async function importTasksFromCsv(opts: {
+type ImportOptions = {
   listId: string;
+  workspaceId: string;
   csvContent: string;
   actorId: string;
-}): Promise<ImportResult> {
-  const { listId, csvContent, actorId } = opts;
+};
+
+export async function importTasksFromCsv(opts: ImportOptions): Promise<ImportResult> {
+  const { listId, csvContent } = opts;
   if (!csvContent || csvContent.trim().length === 0) throw new ApiError(400, "CSV is empty");
   if (csvContent.length > 5 * 1024 * 1024) throw new ApiError(413, "CSV exceeds 5 MB limit");
+  const parsed = parseCsvWithHeader(csvContent);
+  const result = await prisma.$transaction((tx) => writeImport(tx, opts, parsed), { timeout: 30_000 });
+  publish({ type: "list", listId });
+  return result;
+}
 
+async function writeImport(prisma: Prisma.TransactionClient, { listId, workspaceId, actorId }: ImportOptions, parsed: ReturnType<typeof parseCsvWithHeader>): Promise<ImportResult> {
   const list = await prisma.list.findUnique({
-    where: { id: listId },
+    where: { id: listId, space: { workspaceId } },
     include: {
       space: true,
       statuses: { orderBy: { position: "asc" } },
@@ -83,10 +93,8 @@ export async function importTasksFromCsv(opts: {
   });
   if (!list) throw new ApiError(404, "List not found");
 
-  const workspaceId = list.space.workspaceId;
   const spaceId = list.spaceId;
 
-  const parsed = parseCsvWithHeader(csvContent);
   const header = parsed.header;
   if (header.length === 0) throw new ApiError(400, "CSV header is missing");
 
@@ -421,7 +429,7 @@ export async function importTasksFromCsv(opts: {
         case CustomFieldType.RATING:
         case CustomFieldType.PROGRESS: {
           const n = Number(trimmed);
-          if (!Number.isNaN(n)) value = n;
+          if (Number.isFinite(n)) value = n;
           break;
         }
         case CustomFieldType.CHECKBOX: {
@@ -455,8 +463,6 @@ export async function importTasksFromCsv(opts: {
 
     created++;
   }
-
-  publish({ type: "list", listId });
 
   return { created, statusesCreated, tagsCreated, fieldsCreated, optionsCreated };
 }
