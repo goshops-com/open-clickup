@@ -46,11 +46,13 @@ export function TaskModal({
   listId,
   onClose,
   onOpenTask,
+  onCloseAutoFocus,
 }: {
   taskId: string;
   listId: string;
   onClose: () => void;
   onOpenTask?: (id: string) => void;
+  onCloseAutoFocus?: (event: Event) => void;
 }) {
   const qc = useQueryClient();
   const { currentUser, workspace } = useWorkspace();
@@ -92,6 +94,7 @@ export function TaskModal({
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[1px]" />
         <Dialog.Content
+          onCloseAutoFocus={onCloseAutoFocus}
           className="fixed left-1/2 top-1/2 z-50 flex h-[88vh] w-[min(1080px,94vw)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl bg-cu-panel shadow-2xl outline-none"
           aria-describedby={undefined}
         >

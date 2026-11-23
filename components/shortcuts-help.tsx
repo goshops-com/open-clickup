@@ -17,6 +17,15 @@ const GROUPS: { title: string; items: { keys: string[]; label: string }[] }[] = 
     title: "Tasks",
     items: [{ keys: ["C"], label: "Create a task in the current list" }],
   },
+  {
+    title: "List view (focus the task list or a task title)",
+    items: [
+      { keys: ["J"], label: "Focus the next task" },
+      { keys: ["K"], label: "Focus the previous task" },
+      { keys: ["X"], label: "Toggle selection for the focused task" },
+      { keys: ["E", "Enter"], label: "Open the focused task" },
+    ],
+  },
 ];
 
 function Key({ children }: { children: React.ReactNode }) {
@@ -39,7 +48,7 @@ export function ShortcutsHelp({ open, onClose }: { open: boolean; onClose: () =>
               <X className="h-4 w-4" />
             </Dialog.Close>
           </div>
-          <div className="space-y-5 px-4 py-4">
+          <div className="max-h-[70vh] space-y-5 overflow-y-auto px-4 py-4">
             {GROUPS.map((g) => (
               <div key={g.title}>
                 <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-cu-text-tertiary">

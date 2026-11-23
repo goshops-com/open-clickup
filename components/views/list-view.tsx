@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import {
   ChevronRight,
   ChevronDown,
@@ -46,6 +46,9 @@ import { useCopyTaskLink } from "@/components/task/copy-task-link";
 
 /** Cap rendered rows per group; "Show more" reveals the next page. Keeps the DOM bounded for large lists. */
 const PAGE_SIZE = 50;
+const TASK_TITLE = "button[data-list-task]";
+const taskTitleClass = "scroll-mt-10 truncate rounded text-left text-[13px] text-cu-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cu-purple";
+type OpenListTask = (taskId: string, returnFocus?: HTMLElement) => void;
 
 export function ListView({
   data,
@@ -53,14 +56,16 @@ export function ListView({
   groupBy = "status",
 }: {
   data: ListData;
-  onOpenTask: (taskId: string) => void;
+  onOpenTask: OpenListTask;
   groupBy?: GroupBy;
 }) {
   const { list, tasks } = data;
   const statuses = list.statuses;
   const customFields = list.customFields;
-  const { workspace } = useWorkspace();
+  const { workspace, currentUser } = useWorkspace();
   const members = useMemo(() => workspace.members.map((m) => m.user), [workspace.members]);
+  const role = workspace.members.find((m) => m.user.id === currentUser.id)?.role;
+  const canSelect = role === "OWNER" || role === "ADMIN" || role === "MEMBER";
   const update = useUpdateTask(list.id);
   const bulk = useBulk(list.id);
   const { copyLink, feedback: copyLinkFeedback } = useCopyTaskLink();
@@ -80,6 +85,28 @@ export function ListView({
   const sortable = groupBy === "status";
   const [cols, setCols] = useState<Record<string, TaskWithRelations[]>>({});
   const [activeId, setActiveId] = useState<string | null>(null);
+
+  function onListKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || event.nativeEvent.isComposing) return;
+    const { target, currentTarget: root, key } = event;
+    // Scope single-letter keys to the list and its titles, not editors or menus.
+    if (!(target instanceof HTMLButtonElement && root.contains(target) && target.matches(TASK_TITLE)) && target !== root) return;
+
+    if (key === "j" || key === "k") {
+      const titles = Array.from(root.querySelectorAll<HTMLButtonElement>(TASK_TITLE));
+      const index = target instanceof HTMLButtonElement ? titles.indexOf(target) : -1;
+      const next = index < 0 ? (key === "j" ? titles[0] : titles.at(-1)) : titles[index + (key === "j" ? 1 : -1)];
+      event.preventDefault();
+      next?.focus({ preventScroll: true });
+      next?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    } else if (target instanceof HTMLButtonElement && (key === "e" || (key === "x" && canSelect))) {
+      event.preventDefault();
+      const id = target.dataset.listTask;
+      if (!id || event.repeat) return;
+      if (key === "e") onOpenTask(id, target);
+      else toggleSelect(id);
+    }
+  }
 
   useEffect(() => {
     if (!sortable || activeId) return;
@@ -172,7 +199,7 @@ export function ListView({
           gridStyle={gridStyle}
           sortable={sortable}
           selected={selected}
-          onToggleSelect={toggleSelect}
+          onToggleSelect={canSelect ? toggleSelect : undefined}
           onOpenTask={onOpenTask}
           onCopyLink={copyLink}
           onUpdate={(taskId, patch) => update.mutate({ taskId, patch })}
@@ -182,7 +209,13 @@ export function ListView({
   );
 
   return (
-    <div className="flex-1 overflow-auto">
+    <div
+      role="region"
+      aria-label="Task list"
+      tabIndex={0}
+      onKeyDown={onListKeyDown}
+      className="flex-1 overflow-auto focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-cu-purple"
+    >
       <div className="min-w-max">
         {sortable ? (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={onDragStart} onDragOver={onDragOver} onDragEnd={onDragEnd}>
@@ -194,7 +227,7 @@ export function ListView({
       </div>
       {copyLinkFeedback}
       {addingField && <AddFieldDialog listId={list.id} onClose={() => setAddingField(false)} />}
-      {selected.size > 0 && (
+      {canSelect && selected.size > 0 && (
         <BulkBar
           count={selected.size}
           statuses={statuses}
@@ -265,8 +298,8 @@ function Group({
   gridStyle: React.CSSProperties;
   sortable: boolean;
   selected: Set<string>;
-  onToggleSelect: (id: string) => void;
-  onOpenTask: (id: string) => void;
+  onToggleSelect?: (id: string) => void;
+  onOpenTask: OpenListTask;
   onUpdate: RowProps["onUpdate"];
   onCopyLink: RowProps["onCopyLink"];
 }) {
@@ -281,7 +314,7 @@ function Group({
   return (
     <div className="border-b border-cu-border/70">
       <div className="flex items-center gap-2 px-3 py-2">
-        <button onClick={() => setCollapsed((c) => !c)} className="text-cu-text-tertiary hover:text-cu-text">
+        <button onClick={() => setCollapsed((c) => !c)} aria-label={`${collapsed ? "Expand" : "Collapse"} ${group.label}`} aria-expanded={!collapsed} className="text-cu-text-tertiary hover:text-cu-text">
           {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </button>
         <span
@@ -337,8 +370,8 @@ type RowProps = {
   customFields: CustomFieldWithOptions[];
   gridStyle: React.CSSProperties;
   selected: Set<string>;
-  onToggleSelect: (id: string) => void;
-  onOpenTask: (id: string) => void;
+  onToggleSelect?: (id: string) => void;
+  onOpenTask: OpenListTask;
   onCopyLink: (listId: string, taskId: string, trigger: HTMLButtonElement | null) => void;
   onUpdate: (taskId: string, patch: Record<string, unknown>) => void;
 };
@@ -412,8 +445,12 @@ function TaskRow({
   const hasSubtasks = task.subtasks.length > 0;
 
   // single click on the name opens the task; double click renames it
-  function onNameClick(e: React.MouseEvent) {
+  function onNameClick(e: React.MouseEvent<HTMLButtonElement>) {
     e.stopPropagation();
+    if (e.detail === 0) {
+      onOpenTask(task.id, e.currentTarget);
+      return;
+    }
     if (clickTimer.current) return;
     clickTimer.current = setTimeout(() => {
       clickTimer.current = null;
@@ -441,21 +478,13 @@ function TaskRow({
       >
         <div className="flex items-center gap-1.5 py-2">
           {handle && <span className="-ml-1 flex w-3 justify-center">{handle}</span>}
-          <span className="flex w-4 justify-center" onClick={(e) => e.stopPropagation()}>
-            <input
-              type="checkbox"
-              checked={isSelected}
-              onChange={() => onToggleSelect(task.id)}
-              className={cn(
-                "h-3.5 w-3.5 cursor-pointer accent-[var(--cu-purple)]",
-                !isSelected && "opacity-0 group-hover:opacity-100",
-              )}
-            />
-          </span>
+          {onToggleSelect && <TaskSelection name={task.name} checked={isSelected} onToggle={() => onToggleSelect(task.id)} />}
           <span className="flex w-4 justify-center">
             {hasSubtasks ? (
               <button
                 onClick={(e) => { e.stopPropagation(); setExpanded((x) => !x); }}
+                aria-label={`${expanded ? "Collapse" : "Expand"} subtasks for ${task.name}`}
+                aria-expanded={expanded}
                 className="text-cu-text-tertiary hover:text-cu-text"
               >
                 {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
@@ -478,13 +507,15 @@ function TaskRow({
               className="flex-1 rounded border border-cu-purple bg-cu-panel px-1 py-0.5 text-[13px] outline-none"
             />
           ) : (
-            <span
-              className="truncate text-[13px] text-cu-text"
+            <button
+              type="button"
+              data-list-task={task.id}
+              className={taskTitleClass}
               onClick={onNameClick}
               onDoubleClick={onNameDoubleClick}
             >
               {task.name}
-            </span>
+            </button>
           )}
 
           <span className="ml-1 flex items-center gap-2 text-cu-text-tertiary">
@@ -554,13 +585,21 @@ function TaskRow({
         task.subtasks.map((sub) => (
           <div
             key={sub.id}
-            className="grid cursor-pointer items-center border-t border-cu-border/40 bg-cu-sidebar/40 px-3 hover:bg-cu-hover/60"
+            className={cn("group grid cursor-pointer items-center border-t border-cu-border/40 px-3", selected.has(sub.id) ? "bg-cu-purple-light" : "bg-cu-sidebar/40 hover:bg-cu-hover/60")}
             style={gridStyle}
             onClick={() => onOpenTask(sub.id)}
           >
             <div className="flex items-center gap-1.5 py-2 pl-8">
+              {onToggleSelect && <TaskSelection name={sub.name} checked={selected.has(sub.id)} onToggle={() => onToggleSelect(sub.id)} />}
               <StatusCircle status={sub.status} />
-              <span className="truncate text-[13px] text-cu-text">{sub.name}</span>
+              <button
+                type="button"
+                data-list-task={sub.id}
+                className={taskTitleClass}
+                onClick={(event) => { event.stopPropagation(); onOpenTask(sub.id, event.currentTarget); }}
+              >
+                {sub.name}
+              </button>
             </div>
             <div className="py-2">
               {sub.assignees.length > 0 && (
@@ -574,6 +613,20 @@ function TaskRow({
           </div>
         ))}
     </>
+  );
+}
+
+function TaskSelection({ name, checked, onToggle }: { name: string; checked: boolean; onToggle: () => void }) {
+  return (
+    <span className="flex w-4 shrink-0 justify-center" onClick={(event) => event.stopPropagation()}>
+      <input
+        type="checkbox"
+        aria-label={`Select ${name}`}
+        checked={checked}
+        onChange={onToggle}
+        className={cn("size-3.5 cursor-pointer accent-cu-purple", !checked && "opacity-0 focus-visible:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100")}
+      />
+    </span>
   );
 }
 
