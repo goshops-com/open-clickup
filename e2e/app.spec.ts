@@ -1,8 +1,23 @@
 import { test, expect, type Page } from "@playwright/test";
+import { readFile } from "node:fs/promises";
 import type { ListData, TaskWithRelations } from "../lib/queries";
 
 const EMAIL = "santiago@clickuppp.dev";
 const PASSWORD = "password";
+
+test("downloads list tasks as CSV", async ({ page }) => {
+  await login(page);
+  await page.locator("aside").getByText("Backlog", { exact: true }).click();
+  await page.getByRole("button", { name: "List actions" }).click();
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("menuitem", { name: "Export tasks as CSV" }).click(),
+  ]);
+  expect(download.suggestedFilename()).toBe("Backlog.csv");
+  const csv = await readFile(await download.path(), "utf8");
+  expect(csv).toContain('"Task name","Status","Assignees","Priority","Start date","Due date"');
+  expect(csv).toContain('"Mobile app MVP scoping","TO DO","santiago@clickuppp.dev","HIGH"');
+});
 
 async function submitLogin(page: Page) {
   await page.getByPlaceholder("you@company.com").fill(EMAIL);

@@ -26,6 +26,7 @@ import { ViewType } from "@/lib/enums";
 import { EMPTY_VIEW_STATE, applyViewState, type ViewState } from "@/lib/view-state";
 import { FilterMenu, SortMenu, GroupMenu } from "@/components/views/filter-sort";
 import { ListView } from "@/components/views/list-view";
+import { listCsv } from "@/lib/list-csv";
 import { BoardView } from "@/components/views/board-view";
 import { CalendarView } from "@/components/views/calendar-view";
 import { GanttView } from "@/components/views/gantt-view";
@@ -144,6 +145,18 @@ export function ListPage({ listId }: { listId: string }) {
 
   const { list } = data;
 
+  function exportCsv() {
+    if (!data) return;
+    const url = URL.createObjectURL(new Blob([listCsv(data)], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${list.name.replace(/[^\p{L}\p{N} _-]+/gu, "-").trim().slice(0, 100) || "tasks"}.csv`;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
   return (
     <div className="flex h-full flex-col">
       {/* breadcrumb / title bar */}
@@ -170,7 +183,7 @@ export function ListPage({ listId }: { listId: string }) {
         </button>
         <DropdownMenu.Root>
           <DropdownMenu.Trigger asChild>
-            <button className="rounded p-1 text-cu-text-tertiary hover:bg-cu-hover">
+            <button aria-label="List actions" className="rounded p-1 text-cu-text-tertiary hover:bg-cu-hover">
               <Ellipsis className="h-4 w-4" />
             </button>
           </DropdownMenu.Trigger>
@@ -191,6 +204,9 @@ export function ListPage({ listId }: { listId: string }) {
                 className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-[13px] outline-none hover:bg-cu-hover"
               >
                 New from template
+              </DropdownMenu.Item>
+              <DropdownMenu.Item onSelect={exportCsv} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-[13px] outline-none hover:bg-cu-hover focus:bg-cu-hover">
+                Export tasks as CSV
               </DropdownMenu.Item>
             </DropdownMenu.Content>
           </DropdownMenu.Portal>
