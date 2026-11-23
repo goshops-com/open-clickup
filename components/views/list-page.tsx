@@ -19,7 +19,7 @@ import {
 import { cn } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
 import { TemplatePicker } from "@/components/views/template-picker";
-import { useList, useCreateTask, useToggleFavorite } from "@/lib/hooks";
+import { useList, useCreateTask, useToggleFavorite, useImportCsv } from "@/lib/hooks";
 import { useWorkspace } from "@/components/workspace-context";
 import { apiSend } from "@/lib/api";
 import { ViewType } from "@/lib/enums";
@@ -62,6 +62,7 @@ function vsFromConfig(config: unknown): ViewState {
 export function ListPage({ listId }: { listId: string }) {
   const { data, isLoading, error } = useList(listId);
   const create = useCreateTask(listId);
+  const importCsv = useImportCsv(listId);
   const { favorites } = useWorkspace();
   const toggleFav = useToggleFavorite();
   const isFav = favorites.includes(listId);
@@ -76,6 +77,9 @@ export function ListPage({ listId }: { listId: string }) {
   const [templatePicker, setTemplatePicker] = useState(false);
   const [vs, setVs] = useState<ViewState>(EMPTY_VIEW_STATE);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importResult, setImportResult] = useState<{ created: number } | null>(null);
 
   const views = data?.list.views ?? [];
   const activeView = views.find((v) => v.id === activeViewId) ?? views[0];
@@ -157,6 +161,28 @@ export function ListPage({ listId }: { listId: string }) {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
+  async function onImportFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportError(null);
+    setImportResult(null);
+    try {
+      const text = await file.text();
+      const result = await importCsv.mutateAsync(text);
+      setImportResult(result);
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : "Import failed");
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  function triggerImport() {
+    setImportError(null);
+    setImportResult(null);
+    fileInputRef.current?.click();
+  }
+
   return (
     <div className="flex h-full flex-col">
       {/* breadcrumb / title bar */}
@@ -208,10 +234,21 @@ export function ListPage({ listId }: { listId: string }) {
               <DropdownMenu.Item onSelect={exportCsv} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-[13px] outline-none hover:bg-cu-hover focus:bg-cu-hover">
                 Export tasks as CSV
               </DropdownMenu.Item>
+              <DropdownMenu.Item onSelect={triggerImport} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-[13px] outline-none hover:bg-cu-hover focus:bg-cu-hover">
+                Import tasks from CSV
+              </DropdownMenu.Item>
             </DropdownMenu.Content>
           </DropdownMenu.Portal>
         </DropdownMenu.Root>
+        <input ref={fileInputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={onImportFile} />
       </div>
+
+      {(importError || importResult) && (
+        <div className="px-4 pt-2">
+          {importError && <div className="rounded bg-red-50 px-3 py-2 text-[13px] text-red-600">{importError}</div>}
+          {importResult && <div className="rounded bg-green-50 px-3 py-2 text-[13px] text-green-700">Imported {importResult.created} task(s)</div>}
+        </div>
+      )}
 
       {/* view tabs */}
       <div className="flex items-center justify-between border-b border-cu-border px-3">
